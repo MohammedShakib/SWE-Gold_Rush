@@ -1,11 +1,7 @@
 import { useState, useEffect } from 'react';
 import { LanguageProvider } from './context/LanguageContext';
 import Header from './components/Header';
-import HeroSection from './components/HeroSection';
-import AboutSection from './components/AboutSection';
-import FeaturesSection from './components/FeaturesSection';
-import BlogSection from './components/BlogSection';
-import ContactSection from './components/ContactSection';
+import LandingPage from './pages/LandingPage/LandingPage';
 import Footer from './components/Footer';
 
 function App() {
@@ -14,11 +10,7 @@ function App() {
             <div className="app">
                 <Header />
                 <main>
-                    <HeroSection />
-                    <AboutSection />
-                    <FeaturesSection />
-                    <BlogSection />
-                    <ContactSection />
+                    <LandingPage />
                 </main>
                 <Footer />
             </div>

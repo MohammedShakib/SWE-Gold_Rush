@@ -1,6 +1,6 @@
-import { useLanguage } from '../context/LanguageContext';
-import { translations } from '../utils/translations';
-import { useScrollAnimation } from '../hooks/useScrollAnimation';
+import { useLanguage } from '../../context/LanguageContext';
+import { translations } from '../../utils/translations';
+import { useScrollAnimation } from '../../hooks/useScrollAnimation';
 
 const FeaturesSection = () => {
     const { language } = useLanguage();

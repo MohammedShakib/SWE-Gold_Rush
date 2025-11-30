@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useLanguage } from '../context/LanguageContext';
-import { translations } from '../utils/translations';
+import { useLanguage } from '../../context/LanguageContext';
+import { translations } from '../../utils/translations';
 
 const ContactSection = () => {
     const [formData, setFormData] = useState({
