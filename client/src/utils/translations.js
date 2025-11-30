@@ -17,8 +17,8 @@ export const translations = {
         about: {
             title: "About Us",
             subtitle: "Innovating Jewellery Business Management",
-            company: "World Soft Zone (WSZ)",
-            desc: "We are a premier software development company dedicated to transforming businesses through digital innovation. Our portfolio includes industry-leading solutions like WIBSAS, DENTAON, Pharma Hisab, and eRestora.",
+            company: "Gold Rush",
+            desc: "We are a premier software development company dedicated to transforming businesses through digital innovation. We specialize in providing the best jewellery management solutions.",
             missionTitle: "🎯 Our Mission",
             missionDesc: "To bring smart, accurate, and easy-to-use digital accounting solutions to every jewellery shop in Bangladesh, empowering business owners with real-time insights and control.",
             whyTitle: "💎 Why Choose Gold Rush?",
@@ -73,7 +73,7 @@ export const translations = {
             quickLinks: "Quick Links",
             contact: "Contact",
             follow: "Follow Us",
-            rights: "World Soft Zone. All rights reserved."
+            rights: "Gold Rush. All rights reserved."
         }
     },
     BN: {
@@ -94,8 +94,8 @@ export const translations = {
         about: {
             title: "আমাদের সম্পর্কে",
             subtitle: "জুয়েলারি ব্যবসা ব্যবস্থাপনায় উদ্ভাবন",
-            company: "ওয়ার্ল্ড সফট জোন (WSZ)",
-            desc: "আমরা একটি শীর্ষস্থানীয় সফটওয়্যার ডেভেলপমেন্ট কোম্পানি যা ডিজিটাল উদ্ভাবনের মাধ্যমে ব্যবসা পরিবর্তন করতে নিবেদিত। আমাদের পোর্টফোলিওতে WIBSAS, DENTAON, ফার্মা হিসাব এবং eRestora-এর মতো শিল্প-নেতৃস্থানীয় সমাধান রয়েছে।",
+            company: "গোল্ড রাশ",
+            desc: "আমরা একটি শীর্ষস্থানীয় সফটওয়্যার ডেভেলপমেন্ট কোম্পানি যা ডিজিটাল উদ্ভাবনের মাধ্যমে ব্যবসা পরিবর্তন করতে নিবেদিত। আমরা সেরা জুয়েলারি ম্যানেজমেন্ট সমাধান প্রদানে বিশেষজ্ঞ।",
             missionTitle: "🎯 আমাদের লক্ষ্য",
             missionDesc: "বাংলাদেশের প্রতিটি জুয়েলারি দোকানে স্মার্ট, নির্ভুল এবং সহজে ব্যবহারযোগ্য ডিজিটাল অ্যাকাউন্টিং সমাধান পৌঁছে দেওয়া, যাতে ব্যবসায়ীরা রিয়েল-টাইম তথ্য এবং নিয়ন্ত্রণ পায়।",
             whyTitle: "💎 গোল্ড রাশ কেন বেছে নেবেন?",
@@ -150,7 +150,7 @@ export const translations = {
             quickLinks: "দ্রুত লিঙ্ক",
             contact: "যোগাযোগ",
             follow: "অনুসরণ করুন",
-            rights: "ওয়ার্ল্ড সফট জোন। সর্বস্বত্ব সংরক্ষিত।"
+            rights: "গোল্ড রাশ। সর্বস্বত্ব সংরক্ষিত।"
         }
     }
 };

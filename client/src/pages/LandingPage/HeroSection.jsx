@@ -1,6 +1,8 @@
 import { useLanguage } from '../../context/LanguageContext';
 import { translations } from '../../utils/translations';
 
+import CountUp from '../../components/CountUp';
+
 const HeroSection = () => {
     const { language } = useLanguage();
     const t = translations[language].hero;
@@ -31,25 +33,74 @@ const HeroSection = () => {
                     </div>
 
                     <div className="animate-fade-in delay-200 relative perspective-1000">
-                        {/* Abstract visual representation */}
-                        <div className="animate-float bg-gradient-to-br from-white/5 to-white/[0.01] backdrop-blur-2xl border border-glass-border rounded-3xl p-8 shadow-2xl" style={{ transformStyle: 'preserve-3d' }}>
-                            <div className="flex justify-between mb-8 border-b border-glass-border pb-4">
-                                <div className="w-10 h-10 bg-primary-gold rounded-full"></div>
-                                <div className="w-30 h-2.5 bg-white/10 rounded-full"></div>
+                        {/* Dashboard Card */}
+                        <div className="bg-[#0F1115] border border-white/10 rounded-[2rem] p-8 shadow-2xl relative z-10 transform transition-transform hover:scale-[1.02] duration-500">
+                            {/* Header Section */}
+                            <div className="flex justify-between items-start mb-8">
+                                <div className="relative">
+                                    <div className="w-16 h-16 bg-primary-gold rounded-full shadow-lg shadow-primary-gold/20 relative z-10"></div>
+                                    <div className="absolute inset-0 bg-primary-gold/50 rounded-full animate-ping opacity-75"></div>
+                                    <div className="absolute -inset-2 bg-primary-gold/20 rounded-full blur-xl"></div>
+                                </div>
+                                <div className="px-6 py-3 rounded-2xl border border-primary-gold bg-[#1A1D21] shadow-lg shadow-black/50 animate-float">
+                                    <span className="text-primary-gold font-bold">24/7 Support</span>
+                                </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                {[1, 2, 3, 4].map(i => (
-                                    <div key={i} className="h-20 bg-white/[0.03] rounded-xl flex items-center justify-center border border-white/5">
-                                        <div className="w-8 h-2 bg-white/10 rounded-full"></div>
+
+                            {/* Separator */}
+                            <div className="h-px bg-white/5 w-full mb-8"></div>
+
+                            {/* Stats Grid */}
+                            <div className="grid grid-cols-2 gap-6">
+                                {/* Gold Rate */}
+                                <div className="bg-[#1A1D21] p-6 rounded-2xl border border-white/5 hover:border-white/10 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary-gold/5 group">
+                                    <div className="w-10 h-10 bg-orange-500/10 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                        <span className="text-xl">🥇</span>
                                     </div>
-                                ))}
+                                    <div className="text-gray-400 text-sm font-medium mb-1">Gold Rate</div>
+                                    <div className="text-2xl font-bold text-white">
+                                        <CountUp end={98500} prefix="৳ " />
+                                    </div>
+                                </div>
+
+                                {/* Silver Rate */}
+                                <div className="bg-[#1A1D21] p-6 rounded-2xl border border-white/5 hover:border-white/10 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary-gold/5 group">
+                                    <div className="w-10 h-10 bg-gray-400/10 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                        <span className="text-xl">🥈</span>
+                                    </div>
+                                    <div className="text-gray-400 text-sm font-medium mb-1">Silver Rate</div>
+                                    <div className="text-2xl font-bold text-white">
+                                        <CountUp end={1700} prefix="৳ " />
+                                    </div>
+                                </div>
+
+                                {/* Today's Sales */}
+                                <div className="bg-[#1A1D21] p-6 rounded-2xl border border-white/5 hover:border-white/10 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary-gold/5 group">
+                                    <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                        <span className="text-xl">📈</span>
+                                    </div>
+                                    <div className="text-gray-400 text-sm font-medium mb-1">Today's Sales</div>
+                                    <div className="text-2xl font-bold text-white">
+                                        <CountUp end={1.2} prefix="৳ " suffix="M" />
+                                    </div>
+                                </div>
+
+                                {/* Total Customers */}
+                                <div className="bg-[#1A1D21] p-6 rounded-2xl border border-white/5 hover:border-white/10 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary-gold/5 group">
+                                    <div className="w-10 h-10 bg-purple-500/10 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                        <span className="text-xl">👥</span>
+                                    </div>
+                                    <div className="text-gray-400 text-sm font-medium mb-1">Total Customers</div>
+                                    <div className="text-2xl font-bold text-white">
+                                        <CountUp end={1250} suffix="+" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Floating elements */}
-                        <div className="absolute -top-5 -right-5 bg-card-bg px-4 py-3 rounded-xl border border-primary-gold text-primary-gold font-bold shadow-lg shadow-black/50">
-                            {t.support}
-                        </div>
+                        {/* Decorative Elements */}
+                        <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary-gold/10 rounded-full blur-3xl -z-10 animate-pulse"></div>
+                        <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-blue-500/5 rounded-full blur-3xl -z-10 animate-pulse delay-700"></div>
                     </div>
                 </div>
             </div>

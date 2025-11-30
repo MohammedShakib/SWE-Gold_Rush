@@ -7,7 +7,8 @@ const Footer = () => {
     const navT = translations[language].nav;
 
     return (
-        <footer className="bg-darker-bg py-16 border-t border-glass-border">
+        <footer className="bg-[#0B0D10] py-16 border-t border-white/5 relative">
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primary-gold/30 to-transparent"></div>
             <div className="container mx-auto px-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
                     <div>
@@ -38,8 +39,8 @@ const Footer = () => {
                     <div>
                         <h4 className="text-text-light mb-4 font-semibold">{t.contact}</h4>
                         <ul className="grid gap-2 text-text-dim text-sm">
-                            <li>+880 1234 567890</li>
-                            <li>info@worldsoftzone.com</li>
+                            <li>01874126156</li>
+                            <li>info@goldrushbd.com</li>
                             <li>Dhaka, Bangladesh</li>
                         </ul>
                     </div>

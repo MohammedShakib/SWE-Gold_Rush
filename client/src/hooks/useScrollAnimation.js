@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-export const useScrollAnimation = () => {
+export const useScrollAnimation = (dependencies = []) => {
     useEffect(() => {
         const observer = new IntersectionObserver((entries) => {
             entries.forEach((entry) => {
@@ -10,9 +10,15 @@ export const useScrollAnimation = () => {
             });
         }, { threshold: 0.1 });
 
-        const elements = document.querySelectorAll('.reveal');
-        elements.forEach((el) => observer.observe(el));
+        // Small delay to ensure DOM is updated
+        setTimeout(() => {
+            const elements = document.querySelectorAll('.reveal');
+            elements.forEach((el) => observer.observe(el));
+        }, 100);
 
-        return () => elements.forEach((el) => observer.unobserve(el));
-    }, []);
+        return () => {
+            const elements = document.querySelectorAll('.reveal');
+            elements.forEach((el) => observer.unobserve(el));
+        };
+    }, dependencies);
 };
