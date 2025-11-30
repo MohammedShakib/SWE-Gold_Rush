@@ -30,7 +30,7 @@ const HeroSection = () => {
                         </div>
                     </div>
 
-                    <div className="animate-fade-in delay-200 relative">
+                    <div className="animate-fade-in delay-200 relative perspective-1000">
                         {/* Abstract visual representation */}
                         <div className="animate-float bg-gradient-to-br from-white/5 to-white/[0.01] backdrop-blur-2xl border border-glass-border rounded-3xl p-8 shadow-2xl" style={{ transformStyle: 'preserve-3d' }}>
                             <div className="flex justify-between mb-8 border-b border-glass-border pb-4">
@@ -39,7 +39,9 @@ const HeroSection = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 {[1, 2, 3, 4].map(i => (
-                                    <div key={i} className="h-20 bg-white/[0.03] rounded-xl"></div>
+                                    <div key={i} className="h-20 bg-white/[0.03] rounded-xl flex items-center justify-center border border-white/5">
+                                        <div className="w-8 h-2 bg-white/10 rounded-full"></div>
+                                    </div>
                                 ))}
                             </div>
                         </div>
