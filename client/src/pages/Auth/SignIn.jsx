@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const SignIn = () => {
     const { language } = useLanguage();
@@ -34,8 +34,15 @@ const SignIn = () => {
         password: ''
     });
 
+    const navigate = useNavigate();
+
     const handleSubmit = (e) => {
         e.preventDefault();
+        if (formData.identifier === 'admin' && formData.password === 'admin') {
+            localStorage.setItem('shopowner_auth', 'true');
+            navigate('/shopowner/dashboard');
+            return;
+        }
         console.log('Sign in attempt:', formData);
     };
 
