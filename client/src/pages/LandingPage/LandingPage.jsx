@@ -4,9 +4,12 @@ import FeaturesSection from './FeaturesSection';
 import BlogSection from './BlogSection';
 import ContactSection from './ContactSection';
 
+import Background from '../../components/Background';
+
 const LandingPage = () => {
     return (
-        <main>
+        <main className="relative">
+            <Background />
             <HeroSection />
             <AboutSection />
             <FeaturesSection />
