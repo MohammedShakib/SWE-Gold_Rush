@@ -92,3 +92,11 @@ Receives contact form data and logs it to the server console.
 
 Project ID: SWE-Gold_Rush
 Branch: development
+
+📁 All developers must follow the project plan:
+1. Clone the project from the development branch.
+2. Work locally on your specific feature (make sure it runs properly).
+3. Push your work to your own named branch. 
+
+
+
