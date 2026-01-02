@@ -1,9 +1,23 @@
+import { useState, useEffect } from 'react';
+
 const CRM = () => {
-    const customers = [
-        { id: 1, name: 'Mrs. Fatema Begum', phone: '01712345678', type: 'VIP', visits: 12, spent: '৳ 5,20,000', lastVisit: '2 days ago' },
-        { id: 2, name: 'Mr. Rahim Uddin', phone: '01812345678', type: 'Regular', visits: 5, spent: '৳ 1,50,000', lastVisit: '1 week ago' },
-        { id: 3, name: 'Ms. Sadia Islam', phone: '01912345678', type: 'New', visits: 1, spent: '৳ 45,000', lastVisit: 'Today' },
-    ];
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetch('/api/customers')
+            .then(res => res.json())
+            .then(data => {
+                setCustomers(data);
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error("Failed to fetch customers", err);
+                setLoading(false);
+            });
+    }, []);
+
+    if (loading) return <div className="text-white">Loading Customers...</div>;
 
     return (
         <div className="space-y-8 animate-fade-in h-[calc(100vh-8rem)] flex flex-col">
@@ -43,8 +57,8 @@ const CRM = () => {
                                         </div>
                                     </div>
                                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${customer.type === 'VIP' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
-                                            customer.type === 'New' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
-                                                'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                                        customer.type === 'New' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                                            'bg-blue-500/10 text-blue-400 border border-blue-500/20'
                                         }`}>
                                         {customer.type}
                                     </span>
@@ -52,11 +66,11 @@ const CRM = () => {
                                 <div className="grid grid-cols-2 gap-4 text-sm mb-4">
                                     <div>
                                         <p className="text-gray-500 text-xs">Total Spent</p>
-                                        <p className="text-white font-bold">{customer.spent}</p>
+                                        <p className="text-white font-bold">৳ {customer.total_spent?.toLocaleString()}</p>
                                     </div>
                                     <div>
                                         <p className="text-gray-500 text-xs">Last Visit</p>
-                                        <p className="text-white">{customer.lastVisit}</p>
+                                        <p className="text-white">{new Date(customer.last_visit).toLocaleDateString()}</p>
                                     </div>
                                 </div>
                                 <div className="flex gap-2">

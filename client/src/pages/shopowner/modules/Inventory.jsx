@@ -1,15 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const Inventory = () => {
-    // Demo Data
-    const [products] = useState([
-        { id: 'P-1001', name: '22K Gold Bridal Necklace', category: 'Necklace', weight: '45.5 g', karat: '22K', stock: 3, price: '৳ 5,11,875', status: 'In Stock' },
-        { id: 'P-1002', name: 'Diamond Engagement Ring', category: 'Ring', weight: '4.2 g', karat: '18K', stock: 12, price: '৳ 85,000', status: 'In Stock' },
-        { id: 'P-1003', name: 'Gold Bangle (Traditional)', category: 'Bangle', weight: '15.0 g', karat: '21K', stock: 1, price: '৳ 1,65,000', status: 'Low Stock' },
-        { id: 'P-1004', name: 'Mens Gold Chain', category: 'Chain', weight: '12.5 g', karat: '22K', stock: 0, price: '৳ 1,40,625', status: 'Out of Stock' },
-        { id: 'P-1005', name: 'Baby Anklet Pair', category: 'Anklet', weight: '6.0 g', karat: '21K', stock: 8, price: '৳ 66,000', status: 'In Stock' },
-        { id: 'P-1006', name: 'Ruby Studded Earring', category: 'Earring', weight: '5.5 g', karat: '18K', stock: 5, price: '৳ 45,000', status: 'In Stock' },
-    ]);
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetch('/api/inventory')
+            .then(res => res.json())
+            .then(data => {
+                setProducts(data);
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error("Failed to fetch inventory", err);
+                setLoading(false);
+            });
+    }, []);
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -19,6 +25,8 @@ const Inventory = () => {
             default: return 'bg-gray-500/10 text-gray-400';
         }
     };
+
+    if (loading) return <div className="text-white">Loading Inventory...</div>;
 
     return (
         <div className="space-y-8 animate-fade-in">
@@ -39,15 +47,15 @@ const Inventory = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-[#121418] p-6 rounded-2xl border border-white/5">
                     <p className="text-gray-400 text-sm">Total Items</p>
-                    <p className="text-2xl font-bold text-white mt-1">1,245</p>
+                    <p className="text-2xl font-bold text-white mt-1">{products.length}</p>
                 </div>
                 <div className="bg-[#121418] p-6 rounded-2xl border border-white/5">
                     <p className="text-gray-400 text-sm">Total Value</p>
-                    <p className="text-2xl font-bold text-primary-gold mt-1">৳ 4.5 Cr</p>
+                    <p className="text-2xl font-bold text-primary-gold mt-1">৳ {products.reduce((acc, p) => acc + (p.price * p.stock_quantity), 0).toLocaleString()}</p>
                 </div>
                 <div className="bg-[#121418] p-6 rounded-2xl border border-white/5">
                     <p className="text-gray-400 text-sm">Low Stock Alerts</p>
-                    <p className="text-2xl font-bold text-red-400 mt-1">3 Items</p>
+                    <p className="text-2xl font-bold text-red-400 mt-1">{products.filter(p => p.stock_quantity < 3).length} Items</p>
                 </div>
             </div>
 
@@ -83,14 +91,14 @@ const Inventory = () => {
                                     <td className="p-4">
                                         <div>
                                             <p className="font-bold text-white">{product.name}</p>
-                                            <p className="text-xs text-gray-500">{product.id}</p>
+                                            <p className="text-xs text-gray-500">{product.product_code}</p>
                                         </div>
                                     </td>
                                     <td className="p-4">{product.category}</td>
                                     <td className="p-4"><span className="bg-yellow-500/10 text-yellow-500 px-2 py-1 rounded text-xs font-bold">{product.karat}</span></td>
-                                    <td className="p-4 font-mono text-white">{product.weight}</td>
-                                    <td className="p-4 font-bold text-primary-gold">{product.price}</td>
-                                    <td className="p-4">{product.stock}</td>
+                                    <td className="p-4 font-mono text-white">{product.weight} g</td>
+                                    <td className="p-4 font-bold text-primary-gold">৳ {product.price.toLocaleString()}</td>
+                                    <td className="p-4">{product.stock_quantity}</td>
                                     <td className="p-4">
                                         <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(product.status)}`}>
                                             {product.status}
