@@ -1,23 +1,39 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const Sales = () => {
     const [cart, setCart] = useState([
-        { id: 1, name: '22K Gold Ring', weight: '4.5g', price: 45000, qty: 1 },
-        { id: 2, name: 'Silver Anklet', weight: '12g', price: 3500, qty: 2 },
+        // Keeping cart empty initially or could be persisted
     ]);
 
-    const products = [
-        { id: 1, name: '22K Gold Ring', weight: '4.5g', price: '৳ 45,000', image: '💍' },
-        { id: 2, name: 'Silver Anklet', weight: '12g', price: '৳ 3,500', image: '⛓️' },
-        { id: 3, name: 'Diamond Studs', weight: '2.1g', price: '৳ 25,000', image: '💎' },
-        { id: 4, name: 'Gold Necklace', weight: '15g', price: '৳ 1,50,000', image: '📿' },
-        { id: 5, name: 'Platinum Band', weight: '5g', price: '৳ 60,000', image: '💍' },
-        { id: 6, name: 'Gold Coin', weight: '10g', price: '৳ 1,10,000', image: '🪙' },
-    ];
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetch('/api/inventory')
+            .then(res => res.json())
+            .then(data => {
+                setProducts(data);
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error("Failed to fetch inventory for sales", err);
+                setLoading(false);
+            });
+    }, []);
 
     const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
     const tax = subtotal * 0.05;
     const total = subtotal + tax;
+
+    const addToCart = (product) => {
+        setCart(prev => {
+            const existing = prev.find(p => p.id === product.id);
+            if (existing) {
+                return prev.map(p => p.id === product.id ? { ...p, qty: p.qty + 1 } : p);
+            }
+            return [...prev, { ...product, qty: 1 }];
+        });
+    };
 
     return (
         <div className="h-[calc(100vh-8rem)] flex flex-col lg:flex-row gap-6 animate-fade-in">
@@ -48,14 +64,14 @@ const Sales = () => {
 
                 {/* Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pr-2">
-                    {products.map((product) => (
-                        <div key={product.id} className="bg-[#121418] p-4 rounded-xl border border-white/5 hover:border-primary-gold/30 cursor-pointer transition-all hover:transform hover:scale-[1.02] group">
+                    {loading ? <div className="text-white">Loading Products...</div> : products.map((product) => (
+                        <div key={product.id} onClick={() => addToCart(product)} className="bg-[#121418] p-4 rounded-xl border border-white/5 hover:border-primary-gold/30 cursor-pointer transition-all hover:transform hover:scale-[1.02] group">
                             <div className="aspect-square bg-white/5 rounded-lg mb-3 flex items-center justify-center text-4xl group-hover:bg-white/10 transition-colors">
-                                {product.image}
+                                💍
                             </div>
                             <h3 className="font-bold text-white text-sm truncate">{product.name}</h3>
-                            <p className="text-xs text-gray-400 mb-2">{product.weight}</p>
-                            <p className="text-primary-gold font-bold">{product.price}</p>
+                            <p className="text-xs text-gray-400 mb-2">{product.weight} g</p>
+                            <p className="text-primary-gold font-bold">৳ {product.price.toLocaleString()}</p>
                         </div>
                     ))}
                 </div>

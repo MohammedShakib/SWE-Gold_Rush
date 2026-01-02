@@ -5,7 +5,7 @@ const DashboardLayout = () => {
     const isAuthenticated = localStorage.getItem('shopowner_auth') === 'true';
 
     if (!isAuthenticated) {
-        return <Navigate to="/shopowner/login" replace />;
+        return <Navigate to="/signin" replace />;
     }
 
     return (

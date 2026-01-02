@@ -4,7 +4,7 @@ import Header from './components/Header';
 import LandingPage from './pages/LandingPage/LandingPage';
 import Footer from './components/Footer';
 import SignIn from './pages/Auth/SignIn';
-import ShopOwnerSignIn from './pages/shopowner/SignIn';
+// import ShopOwnerSignIn from './pages/shopowner/SignIn';
 import DashboardLayout from './pages/shopowner/DashboardLayout';
 import DashboardHome from './pages/shopowner/modules/DashboardHome';
 import Inventory from './pages/shopowner/modules/Inventory';
@@ -33,7 +33,7 @@ function App() {
                     <Route path="/signin" element={<SignIn />} />
 
                     {/* Shop Owner Routes */}
-                    <Route path="/shopowner/login" element={<ShopOwnerSignIn />} />
+                    {/* <Route path="/shopowner/login" element={<ShopOwnerSignIn />} /> - DEPRECATED */}
                     <Route path="/shopowner" element={<DashboardLayout />}>
                         <Route path="dashboard" element={<DashboardHome />} />
                         <Route path="inventory" element={<Inventory />} />
