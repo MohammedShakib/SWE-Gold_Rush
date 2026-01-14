@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { X, User } from 'lucide-react';
 import {
     DashboardIcon, InventoryIcon, SalesIcon, InstallmentIcon,
     ManufacturingIcon, RepairsIcon, CRMIcon, AdminIcon, AIIcon, LogoutIcon
 } from './Icons';
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, onClose }) => {
     const location = useLocation();
     const navigate = useNavigate();
     const [dbStatus, setDbStatus] = useState('checking'); // 'connected', 'disconnected', 'checking'
@@ -42,13 +43,23 @@ const Sidebar = () => {
         { name: 'CRM', path: '/shopowner/crm', icon: CRMIcon },
         { name: 'Admin Control', path: '/shopowner/admin', icon: AdminIcon },
         { name: 'AI Price Prediction', path: '/shopowner/ai-prediction', icon: AIIcon },
+        { name: 'Profile', path: '/shopowner/profile', icon: User },
     ];
 
     return (
-        <div className="w-64 bg-[#121418] border-r border-white/10 h-screen flex flex-col fixed left-0 top-0 overflow-y-auto z-50">
-            <div className="p-6 border-b border-white/10">
-                <h1 className="text-2xl font-bold text-primary-gold tracking-wider">GOLD RUSH</h1>
-                <p className="text-xs text-gray-500 font-medium mt-1 uppercase tracking-widest">Shop Owner Panel</p>
+        <div className={`w-64 bg-[#121418] border-r border-white/10 h-screen flex flex-col fixed left-0 top-0 overflow-y-auto z-50 transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+            }`}>
+            <div className="p-6 border-b border-white/10 flex justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-bold text-primary-gold tracking-wider">GOLD RUSH</h1>
+                    <p className="text-xs text-gray-500 font-medium mt-1 uppercase tracking-widest">Shop Owner Panel</p>
+                </div>
+                <button
+                    onClick={onClose}
+                    className="md:hidden text-gray-400 hover:text-white p-1"
+                >
+                    <X size={24} />
+                </button>
             </div>
             <nav className="flex-1 p-4 space-y-1">
                 {menuItems.map((item) => {
@@ -58,6 +69,11 @@ const Sidebar = () => {
                         <Link
                             key={item.path}
                             to={item.path}
+                            onClick={() => {
+                                if (window.innerWidth < 768) {
+                                    onClose();
+                                }
+                            }}
                             className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 group ${isActive
                                 ? 'bg-gradient-to-r from-primary-gold/20 to-transparent text-primary-gold border-l-2 border-primary-gold'
                                 : 'text-gray-400 hover:bg-white/5 hover:text-white hover:pl-5'

@@ -65,9 +65,9 @@ const AdminControl = () => {
 
             {/* Stock Transfer Section */}
             <div className="bg-[#121418] rounded-2xl border border-white/5 overflow-hidden">
-                <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                <div className="p-6 border-b border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <h2 className="text-xl font-bold text-white">Inter-Branch Stock Transfer</h2>
-                    <button className="bg-primary-gold text-black px-4 py-2 rounded-lg font-bold hover:bg-yellow-400 transition-colors text-sm">
+                    <button className="bg-primary-gold text-black px-4 py-2 rounded-lg font-bold hover:bg-yellow-400 transition-colors text-sm w-full md:w-auto">
                         New Transfer Request
                     </button>
                 </div>

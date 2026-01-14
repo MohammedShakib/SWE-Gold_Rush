@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { auth, googleProvider } from '../../firebase';
+import { signInWithPopup } from 'firebase/auth';
+import LocationPicker from '../../components/LocationPicker';
 
 const SignIn = () => {
     const { language } = useLanguage();
@@ -36,7 +39,9 @@ const SignIn = () => {
         signInLink: language === 'EN' ? 'Sign In' : 'সাইন ইন করুন'
     };
 
-    const [isSignUp, setIsSignUp] = useState(false);
+    const routeLocation = useLocation();
+    const isSignUpRoute = routeLocation.pathname === '/signup';
+    const [isSignUp, setIsSignUp] = useState(isSignUpRoute);
 
     const [formData, setFormData] = useState({
         identifier: '',
@@ -45,8 +50,13 @@ const SignIn = () => {
         phone: '',
         confirmPassword: ''
     });
+    const [location, setLocation] = useState(null);
 
     const navigate = useNavigate();
+
+    useEffect(() => {
+        setIsSignUp(isSignUpRoute);
+    }, [isSignUpRoute]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -59,20 +69,30 @@ const SignIn = () => {
                 return;
             }
 
+            if (!location) {
+                alert('Please select your shop location on the map.');
+                return;
+            }
+
             try {
                 const response = await fetch('/api/auth/signup', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(formData),
+                    body: JSON.stringify({
+                        ...formData,
+                        latitude: location.lat,
+                        longitude: location.lng
+                    }),
                 });
 
                 const data = await response.json();
 
                 if (response.ok) {
                     alert(language === 'EN' ? 'Signup Successful!' : 'সাইন আপ সফল হয়েছে!');
-                    setIsSignUp(false); // Switch to sign in after successful signup
+                    setIsSignUp(false);
+                    navigate('/signin');
                     // Clear form
                     setFormData({
                         identifier: '',
@@ -81,6 +101,7 @@ const SignIn = () => {
                         phone: '',
                         confirmPassword: ''
                     });
+                    setLocation(null);
                 } else {
                     alert(data.error || 'Signup Failed');
                 }
@@ -100,7 +121,8 @@ const SignIn = () => {
     };
 
     const toggleMode = () => {
-        setIsSignUp(!isSignUp);
+        const nextIsSignUp = !isSignUp;
+        setIsSignUp(nextIsSignUp);
         setFormData({
             identifier: '',
             password: '',
@@ -108,6 +130,37 @@ const SignIn = () => {
             phone: '',
             confirmPassword: ''
         });
+        setLocation(null);
+        navigate(nextIsSignUp ? '/signup' : '/signin');
+    };
+
+    const handleGoogleSignIn = async () => {
+        try {
+            const result = await signInWithPopup(auth, googleProvider);
+            const user = result.user;
+
+            const response = await fetch('/api/auth/google', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: user.email,
+                    fullName: user.displayName,
+                    photoURL: user.photoURL
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                localStorage.setItem('shopowner_auth', 'true');
+                navigate('/shopowner/dashboard');
+            } else {
+                alert(data.error || "Google Sign In Failed");
+            }
+        } catch (error) {
+            console.error("Google Sign In Error", error);
+            alert("Google Sign In Failed");
+        }
     };
 
     return (
@@ -243,6 +296,26 @@ const SignIn = () => {
                             </button>
                         </form>
 
+                        <div className="relative z-10 my-6 flex items-center gap-4">
+                            <div className="h-px bg-white/10 flex-1"></div>
+                            <span className="text-gray-500 text-xs uppercase tracking-wider font-medium">Or continue with</span>
+                            <div className="h-px bg-white/10 flex-1"></div>
+                        </div>
+
+                        <button
+                            onClick={handleGoogleSignIn}
+                            type="button"
+                            className="w-full relative z-10 bg-[#0B0D10]/50 border border-white/10 hover:border-white/20 text-white font-medium py-3 md:py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 group/google hover:bg-white/5 active:scale-[0.98]"
+                        >
+                            <svg className="w-5 h-5" viewBox="0 0 24 24">
+                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                            </svg>
+                            <span className="group-hover/google:text-white transition-colors">Google</span>
+                        </button>
+
                         <div className="mt-8 md:mt-10 text-center relative z-10">
                             <p className="text-gray-400 text-sm">
                                 {isSignUp ? t.yesAccount : t.noAccount}{' '}
@@ -261,21 +334,18 @@ const SignIn = () => {
                     <div className={`${isSignUp ? 'md:w-1/2 opacity-100' : 'w-0 opacity-0 overflow-hidden'} transition-all duration-500 relative bg-[#0B0D10] border-l border-white/5`}>
                         {isSignUp && (
                             <div className="absolute inset-0 w-full h-full">
-                                <iframe
-                                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3651.902442430139!2d90.39108031543163!3d23.75085809468085!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3755b888ad3f983d%3A0x20c765c423183143!2sPanthapath%2C%20Dhaka%201205!5e0!3m2!1sen!2sbd!4v1648721115865!5m2!1sen!2sbd"
-                                    width="100%"
-                                    height="100%"
-                                    style={{ border: 0, filter: 'invert(90%) hue-rotate(180deg) contrast(90%) grayscale(20%)' }}
-                                    allowFullScreen=""
-                                    loading="lazy"
-                                    referrerPolicy="no-referrer-when-downgrade"
-                                    className="opacity-80 hover:opacity-100 transition-opacity duration-500 mix-blend-luminosity"
-                                ></iframe>
+                                <LocationPicker value={location} onLocationSelect={setLocation} />
 
                                 {/* Overlay Content on Map */}
                                 <div className="absolute inset-x-0 bottom-0 p-8 bg-gradient-to-t from-[#050608] via-[#050608]/90 to-transparent pointer-events-none">
                                     <h3 className="text-xl font-bold text-white mb-2">Locate Your Shop</h3>
-                                    <p className="text-gray-400 text-sm">Join the network of trusted jewellery shops in your area.</p>
+                                    <p className="text-gray-400 text-sm">Click the map to pin your shop location.</p>
+                                    {location && (
+                                        <div className="mt-3 text-xs text-gray-300 font-medium bg-black/50 inline-flex gap-4 px-3 py-2 rounded-full border border-white/10">
+                                            <span>Lat: {location.lat.toFixed(6)}</span>
+                                            <span>Lng: {location.lng.toFixed(6)}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}

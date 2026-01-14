@@ -47,6 +47,81 @@ export const translations = {
                 { title: "Income & Expense", desc: "Track daily cash flow" }
             ]
         },
+        contact: {
+            title: "Contact Us",
+            subtitle: "Ready to transform your jewellery business? Contact us for a demo.",
+            call: "Call Us",
+            email: "Email Us",
+            form: {
+                name: "Name",
+                phone: "Phone Number",
+                email: "Email Address",
+                send: "Send Message",
+                sending: "Sending...",
+                success: "Message sent successfully!",
+                error: "Something went wrong. Please try again."
+            }
+        },
+        pricing: {
+            title: "Simple Pricing",
+            subtitle: "All plans include access to ALL features. Choose the duration that suits you.",
+            monthly: "/month",
+            yearly: "/year",
+            lifetime: "one-time",
+            popular: "Most Popular",
+            getStarted: "Get Started",
+            features: "Everything included",
+            plans: [
+                {
+                    name: "Free Trial",
+                    price: "Free",
+                    duration: "7 Days",
+                    desc: "Expierence the full power of Gold Rush risk-free.",
+                    features: [
+                        "7 Days Full Access",
+                        "All Features Included",
+                        "No Credit Card Required",
+                        "Instant Setup"
+                    ]
+                },
+                {
+                    name: "Monthly",
+                    price: "৳3,000",
+                    duration: "/month",
+                    desc: "Flexible monthly billing for growing businesses.",
+                    features: [
+                        "Full Access Month-to-Month",
+                        "All Features Included",
+                        "Cancel Anytime",
+                        "Priority Support"
+                    ]
+                },
+                {
+                    name: "Yearly",
+                    price: "৳30,000",
+                    duration: "/year",
+                    desc: "Best value for established businesses.",
+                    features: [
+                        "Save 2 Months Price",
+                        "All Features Included",
+                        "Premium Support",
+                        "Free Onboarding Session"
+                    ]
+                },
+                {
+                    name: "Lifetime",
+                    price: "৳1,00,000",
+                    duration: "one-time",
+                    desc: "One-time investment for a lifetime of value.",
+                    features: [
+                        "Lifetime Access",
+                        "No Recurring Fees",
+                        "All Features Included",
+                        "Dedicated Account Manager"
+                    ]
+                }
+            ]
+        },
         blog: {
             title: "From Our Blog",
             subtitle: "Latest news and updates from the jewellery industry",
@@ -122,6 +197,66 @@ export const translations = {
                 { title: "রিপোর্ট এবং লাভ", desc: "বিস্তারিত ব্যবসায়িক তথ্য" },
                 { title: "এসএমএস এবং বিজ্ঞপ্তি", desc: "স্বয়ংক্রিয় গ্রাহক সতর্কতা" },
                 { title: "আয় এবং ব্যয়", desc: "দৈনিক নগদ প্রবাহ ট্র্যাক করুন" }
+            ]
+        },
+        pricing: {
+            title: "সহজ মূল্য তালিকা",
+            subtitle: "প্রতিটি প্ল্যানেই সব ফিচার অন্তর্ভুক্ত। আপনার পছন্দের মেয়াদ বেছে নিন।",
+            monthly: "/মাস",
+            yearly: "/বছর",
+            lifetime: "এককালীন",
+            popular: "জনপ্রিয়",
+            getStarted: "শুরু করুন",
+            features: "যা যা পাচ্ছেন",
+            plans: [
+                {
+                    name: "ফ্রি ট্রায়াল",
+                    price: "ফ্রি",
+                    duration: "৭ দিন",
+                    desc: "ঝুঁকি ছাড়াই গোল্ড রাশের পূর্ণ ক্ষমতা যাচাই করুন।",
+                    features: [
+                        "৭ দিনের পূর্ণ অ্যাক্সেস",
+                        "সকল ফিচার অন্তর্ভুক্ত",
+                        "কোন ক্রেডিট কার্ড প্রয়োজন নেই",
+                        "তাৎক্ষণিক সেটআপ"
+                    ]
+                },
+                {
+                    name: "মাসিক",
+                    price: "৳৩,০০০",
+                    duration: "/মাস",
+                    desc: "ক্রমবর্ধমান ব্যবসার জন্য নমনীয় মাসিক বিলিং।",
+                    features: [
+                        "মাসিক পূর্ণ অ্যাক্সেস",
+                        "সকল ফিচার অন্তর্ভুক্ত",
+                        "যেকোনো সময় বাতিলযোগ্য",
+                        "অগ্রাধিকার সাপোর্ট"
+                    ]
+                },
+                {
+                    name: "বাৎসরিক",
+                    price: "৳৩০,০০০",
+                    duration: "/বছর",
+                    desc: "প্রতিষ্ঠিত ব্যবসার জন্য সেরা মূল্য।",
+                    features: [
+                        "২ মাসের মূল্য সাশ্রয়",
+                        "সকল ফিচার অন্তর্ভুক্ত",
+                        "প্রিমিয়াম সাপোর্ট",
+                        "ফ্রি অনবোর্ডিং সেশন"
+                    ]
+                },
+                {
+                    name: "আজীবন",
+                    price: "৳১,০০,০০০",
+                    duration: "এককালীন",
+                    desc: "আজীবন ব্যবহারের জন্য এককালীন বিনিয়োগ।",
+                    features: [
+                        "আজীবন অ্যাক্সেস",
+                        "কোনো মাসিক ফি নেই",
+                        "সকল ফিচার অন্তর্ভুক্ত",
+                        "ডেডিকেটেড অ্যাকাউন্ট ম্যানেজার"
+                    ]
+                }
             ]
         },
         blog: {

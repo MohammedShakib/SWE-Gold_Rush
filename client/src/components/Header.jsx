@@ -98,6 +98,13 @@ const Header = () => {
                             </button>
 
                             <Link
+                                to="/signup"
+                                className="border border-primary-gold text-primary-gold px-6 py-2 rounded-full font-bold hover:bg-primary-gold hover:text-darker-bg transition-all"
+                            >
+                                Sign Up
+                            </Link>
+
+                            <Link
                                 to="/signin"
                                 className="bg-gradient-to-r from-primary-gold via-yellow-200 to-primary-gold text-darker-bg px-6 py-2 rounded-full font-bold shadow-lg shadow-primary-gold/20 hover:shadow-primary-gold/30 hover:-translate-y-0.5 transition-all"
                             >
@@ -155,6 +162,14 @@ const Header = () => {
                             >
                                 {language === 'EN' ? '🇺🇸 EN' : '🇧🇩 BN'}
                             </button>
+
+                            <Link
+                                to="/signup"
+                                className="border border-primary-gold text-primary-gold px-8 py-3 rounded-full font-bold hover:bg-primary-gold hover:text-darker-bg transition-all text-lg"
+                                onClick={() => setIsMenuOpen(false)}
+                            >
+                                Sign Up
+                            </Link>
 
                             <Link
                                 to="/signin"

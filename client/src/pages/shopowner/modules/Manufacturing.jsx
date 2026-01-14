@@ -37,16 +37,16 @@ const Manufacturing = () => {
 
     return (
         <div className="space-y-8 animate-fade-in h-[calc(100vh-8rem)] flex flex-col">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-white">Manufacturing Workflow</h1>
                     <p className="text-gray-400 mt-1">Track production from order to delivery.</p>
                 </div>
-                <div className="flex gap-4">
-                    <div className="bg-[#121418] px-4 py-2 rounded-lg border border-white/10 text-sm">
+                <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+                    <div className="bg-[#121418] px-4 py-2 rounded-lg border border-white/10 text-sm flex justify-between sm:justify-start gap-2">
                         <span className="text-gray-400">Gold Allocated:</span> <span className="text-primary-gold font-bold">125.5 g</span>
                     </div>
-                    <button className="bg-primary-gold text-black px-6 py-2 rounded-xl font-bold hover:bg-yellow-400 transition-colors">
+                    <button className="bg-primary-gold text-black px-6 py-2 rounded-xl font-bold hover:bg-yellow-400 transition-colors w-full sm:w-auto">
                         New Order
                     </button>
                 </div>

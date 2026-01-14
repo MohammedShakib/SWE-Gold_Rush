@@ -1,12 +1,12 @@
 const AIPrediction = () => {
     return (
         <div className="space-y-8 animate-fade-in">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-white">AI Gold Price Prediction</h1>
                     <p className="text-gray-400 mt-1">Market forecasting powered by Machine Learning.</p>
                 </div>
-                <div className="text-right">
+                <div className="text-left md:text-right w-full md:w-auto bg-[#121418] md:bg-transparent p-4 md:p-0 rounded-xl md:rounded-none border border-white/5 md:border-none">
                     <p className="text-sm text-gray-400">Model Accuracy</p>
                     <p className="text-xl font-bold text-green-400">94.5%</p>
                 </div>

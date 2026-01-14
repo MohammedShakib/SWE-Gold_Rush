@@ -15,6 +15,7 @@ import Repairs from './pages/shopowner/modules/Repairs';
 import CRM from './pages/shopowner/modules/CRM';
 import AdminControl from './pages/shopowner/modules/AdminControl';
 import AIPrediction from './pages/shopowner/modules/AIPrediction';
+import Profile from './pages/shopowner/modules/Profile';
 
 function App() {
     return (
@@ -31,11 +32,13 @@ function App() {
                         </>
                     } />
                     <Route path="/signin" element={<SignIn />} />
+                    <Route path="/signup" element={<SignIn />} />
 
                     {/* Shop Owner Routes */}
                     {/* <Route path="/shopowner/login" element={<ShopOwnerSignIn />} /> - DEPRECATED */}
                     <Route path="/shopowner" element={<DashboardLayout />}>
                         <Route path="dashboard" element={<DashboardHome />} />
+                        <Route path="profile" element={<Profile />} />
                         <Route path="inventory" element={<Inventory />} />
                         <Route path="sales" element={<Sales />} />
                         <Route path="installments" element={<Installments />} />

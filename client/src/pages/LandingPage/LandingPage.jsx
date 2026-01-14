@@ -3,6 +3,7 @@ import AboutSection from './AboutSection';
 import FeaturesSection from './FeaturesSection';
 import BlogSection from './BlogSection';
 import ContactSection from './ContactSection';
+import PricingSection from './PricingSection';
 
 import Background from '../../components/Background';
 
@@ -13,6 +14,7 @@ const LandingPage = () => {
             <HeroSection />
             <AboutSection />
             <FeaturesSection />
+            <PricingSection />
             <BlogSection />
             <ContactSection />
         </main>

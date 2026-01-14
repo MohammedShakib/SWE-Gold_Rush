@@ -9,7 +9,7 @@ const AboutSection = () => {
 
     return (
         <section id="about" className="py-24 bg-darker-bg">
-            <div className="container mx-auto px-8">
+            <div className="container mx-auto px-4 md:px-8">
                 <h2 className="section-title reveal">{t.title}</h2>
                 <p className="section-subtitle reveal">{t.subtitle}</p>
 

@@ -7,12 +7,12 @@ const Repairs = () => {
 
     return (
         <div className="space-y-8 animate-fade-in">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-white">Repair Management</h1>
                     <p className="text-gray-400 mt-1">Manage customer repairs and services.</p>
                 </div>
-                <button className="bg-primary-gold text-black px-6 py-3 rounded-xl font-bold hover:bg-yellow-400 transition-colors shadow-lg shadow-primary-gold/20">
+                <button className="bg-primary-gold text-black px-6 py-3 rounded-xl font-bold hover:bg-yellow-400 transition-colors shadow-lg shadow-primary-gold/20 w-full md:w-auto">
                     New Repair Ticket
                 </button>
             </div>
@@ -53,8 +53,8 @@ const Repairs = () => {
                                         <td className="p-4">{repair.received}</td>
                                         <td className="p-4">
                                             <span className={`px-3 py-1 rounded-full text-xs font-bold border ${repair.status === 'Completed' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                                                    repair.status === 'In Progress' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                                        'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+                                                repair.status === 'In Progress' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                    'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
                                                 }`}>
                                                 {repair.status}
                                             </span>

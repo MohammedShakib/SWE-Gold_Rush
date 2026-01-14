@@ -17,8 +17,16 @@ const setupDatabase = async () => {
                 phone NVARCHAR(50),
                 identifier NVARCHAR(255) UNIQUE NOT NULL,
                 password NVARCHAR(255) NOT NULL,
+                latitude FLOAT NULL,
+                longitude FLOAT NULL,
                 created_at DATETIME DEFAULT GETDATE()
             );
+        `);
+        await pool.request().query(`
+            IF COL_LENGTH('users', 'latitude') IS NULL
+                ALTER TABLE users ADD latitude FLOAT NULL;
+            IF COL_LENGTH('users', 'longitude') IS NULL
+                ALTER TABLE users ADD longitude FLOAT NULL;
         `);
         console.log("- Users table checked/created.");
 
@@ -86,8 +94,16 @@ const setupDatabase = async () => {
                 final_amount DECIMAL(18, 2) NOT NULL,
                 payment_method NVARCHAR(50), -- Cash, Card, Bkash
                 sale_date DATETIME DEFAULT GETDATE(),
-                created_by INT FOREIGN KEY REFERENCES users(id)
+                created_by INT FOREIGN KEY REFERENCES users(id),
+                transaction_id NVARCHAR(100) UNIQUE,
+                status NVARCHAR(50) DEFAULT 'Completed' -- Pending, Completed, Failed
             );
+        `);
+        await pool.request().query(`
+            IF COL_LENGTH('sales', 'transaction_id') IS NULL
+                ALTER TABLE sales ADD transaction_id NVARCHAR(100) UNIQUE;
+            IF COL_LENGTH('sales', 'status') IS NULL
+                ALTER TABLE sales ADD status NVARCHAR(50) DEFAULT 'Completed';
         `);
         console.log("- Sales table checked/created.");
 
@@ -113,6 +129,7 @@ const setupDatabase = async () => {
                 id INT IDENTITY(1,1) PRIMARY KEY,
                 customer_id INT FOREIGN KEY REFERENCES customers(id),
                 sale_id INT FOREIGN KEY REFERENCES sales(id),
+                item_description NVARCHAR(255), -- Added for tracking specific item
                 total_amount DECIMAL(18, 2) NOT NULL,
                 paid_amount DECIMAL(18, 2) DEFAULT 0,
                 due_amount AS (total_amount - paid_amount),
@@ -121,7 +138,25 @@ const setupDatabase = async () => {
                 created_at DATETIME DEFAULT GETDATE()
             );
         `);
+        await pool.request().query(`
+            IF COL_LENGTH('installments', 'item_description') IS NULL
+                ALTER TABLE installments ADD item_description NVARCHAR(255);
+        `);
         console.log("- Installments table checked/created.");
+
+        // 7.5 Installment Payments Table (New)
+        await pool.request().query(`
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='installment_payments' AND xtype='U')
+            CREATE TABLE installment_payments (
+                id INT IDENTITY(1,1) PRIMARY KEY,
+                installment_id INT FOREIGN KEY REFERENCES installments(id),
+                amount DECIMAL(18, 2) NOT NULL,
+                payment_date DATETIME DEFAULT GETDATE(),
+                payment_method NVARCHAR(50),
+                notes NVARCHAR(MAX)
+            );
+        `);
+        console.log("- Installment Payments table checked/created.");
 
         // 8. Repair Orders Table
         await pool.request().query(`

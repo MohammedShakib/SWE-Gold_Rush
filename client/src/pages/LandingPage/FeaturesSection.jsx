@@ -30,7 +30,7 @@ const FeaturesSection = () => {
                 <div className="absolute bottom-1/4 right-0 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[100px] animate-pulse animation-delay-2000"></div>
             </div>
 
-            <div className="container mx-auto px-8 relative z-10">
+            <div className="container mx-auto px-4 md:px-8 relative z-10">
                 <h2 className="section-title reveal">{t.title}</h2>
                 <p className="section-subtitle reveal">{t.subtitle}</p>
 
