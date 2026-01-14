@@ -11,7 +11,30 @@ app.use(cors());
 app.use(express.json());
 
 // Connect to Database
-connectDB();
+// Connect to Database
+connectDB().then(async () => {
+    try {
+        const pool = await sql.connect();
+        const createManufacturingTableQuery = `
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='manufacturing_orders' AND xtype='U')
+            CREATE TABLE manufacturing_orders (
+                id INT IDENTITY(1,1) PRIMARY KEY,
+                order_id NVARCHAR(50) NOT NULL,
+                customer_name NVARCHAR(255) NOT NULL,
+                product_name NVARCHAR(255) NOT NULL,
+                karigar_name NVARCHAR(255) NULL,
+                status NVARCHAR(50) NOT NULL,
+                gold_weight FLOAT NULL,
+                due_date DATETIME NULL,
+                created_at DATETIME DEFAULT GETDATE()
+            );
+        `;
+        await pool.request().query(createManufacturingTableQuery);
+        console.log("Manufacturing table initialized");
+    } catch (err) {
+        console.error("Schema initialization failed:", err);
+    }
+});
 
 // Mock Data
 const mockBlogPosts = [
@@ -603,7 +626,96 @@ app.post('/api/payment/success/:tran_id', async (req, res) => {
     }
 });
 
-// Payment Fail
+// Manufacturing Routes
+
+// GET /api/manufacturing
+app.get('/api/manufacturing', async (req, res) => {
+    try {
+        const pool = await sql.connect();
+        const result = await pool.request().query('SELECT * FROM manufacturing_orders ORDER BY created_at DESC');
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error fetching manufacturing orders:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// POST /api/manufacturing
+app.post('/api/manufacturing', async (req, res) => {
+    const { order_id, customer_name, product_name, karigar_name, status, gold_weight, due_date } = req.body;
+
+    try {
+        const pool = await sql.connect();
+        const insertQuery = `
+            INSERT INTO manufacturing_orders (order_id, customer_name, product_name, karigar_name, status, gold_weight, due_date)
+            OUTPUT INSERTED.*
+            VALUES (@order_id, @customer_name, @product_name, @karigar_name, @status, @gold_weight, @due_date)
+        `;
+
+        const result = await pool.request()
+            .input('order_id', sql.NVarChar, order_id)
+            .input('customer_name', sql.NVarChar, customer_name)
+            .input('product_name', sql.NVarChar, product_name)
+            .input('karigar_name', sql.NVarChar, karigar_name || null)
+            .input('status', sql.NVarChar, status || 'New Orders')
+            .input('gold_weight', sql.Float, gold_weight || 0)
+            .input('due_date', sql.DateTime, due_date || null)
+            .query(insertQuery);
+
+        res.status(201).json(result.recordset[0]);
+    } catch (err) {
+        console.error("Error creating manufacturing order:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// PUT /api/manufacturing/:id/status
+app.put('/api/manufacturing/:id/status', async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    try {
+        const pool = await sql.connect();
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .input('status', sql.NVarChar, status)
+            .query(`
+                UPDATE manufacturing_orders 
+                SET status = @status 
+                OUTPUT INSERTED.*
+                WHERE id = @id
+            `);
+
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: "Order not found" });
+        }
+
+        res.json(result.recordset[0]);
+    } catch (err) {
+        console.error("Error updating manufacturing status:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// DELETE /api/manufacturing/:id
+app.delete('/api/manufacturing/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const pool = await sql.connect();
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query('DELETE FROM manufacturing_orders WHERE id = @id');
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: "Order not found" });
+        }
+
+        res.json({ message: "Order deleted successfully" });
+    } catch (err) {
+        console.error("Error deleting manufacturing order:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
 app.post('/api/payment/fail/:tran_id', async (req, res) => {
     const { tran_id } = req.params;
     try {

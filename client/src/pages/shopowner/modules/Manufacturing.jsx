@@ -1,39 +1,110 @@
+import { useState, useEffect } from 'react';
+import { DndContext, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
+import NewManufacturingOrderModal from '../../../components/NewManufacturingOrderModal';
+
 const Manufacturing = () => {
-    const workflow = [
-        {
-            title: 'New Orders',
-            color: 'border-blue-500/50',
-            badge: 'bg-blue-500/10 text-blue-400',
-            items: [
-                { id: 'MF-001', item: 'Custom Diamond Ring', customer: 'Mr. Ahmed', date: 'Today' },
-                { id: 'MF-002', item: 'Gold Chain Repair', customer: 'Walk-in', date: 'Yesterday' },
-            ]
-        },
-        {
-            title: 'In Progress (Molding)',
-            color: 'border-yellow-500/50',
-            badge: 'bg-yellow-500/10 text-yellow-400',
-            items: [
-                { id: 'MF-003', item: 'Bridal Set (Necklace)', customer: 'Mrs. Khan', karigar: 'Rahim' },
-            ]
-        },
-        {
-            title: 'Polishing & QC',
-            color: 'border-purple-500/50',
-            badge: 'bg-purple-500/10 text-purple-400',
-            items: [
-                { id: 'MF-004', item: 'Gold Bangle Pair', customer: 'Ms. Nusrat', status: 'QC Pending' },
-            ]
-        },
-        {
-            title: 'Ready for Delivery',
-            color: 'border-green-500/50',
-            badge: 'bg-green-500/10 text-green-400',
-            items: [
-                { id: 'MF-005', item: 'Silver Anklet', customer: 'Mr. Karim', status: 'Ready' },
-            ]
-        }
+    const [orders, setOrders] = useState([]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        })
+    );
+
+    const columns = [
+        { title: 'New Orders', id: 'New Orders', color: 'border-blue-500/50', badge: 'bg-blue-500/10 text-blue-400' },
+        { title: 'In Progress (Molding)', id: 'In Progress', color: 'border-yellow-500/50', badge: 'bg-yellow-500/10 text-yellow-400' },
+        { title: 'Polishing & QC', id: 'Polishing & QC', color: 'border-purple-500/50', badge: 'bg-purple-500/10 text-purple-400' },
+        { title: 'Ready for Delivery', id: 'Ready for Delivery', color: 'border-green-500/50', badge: 'bg-green-500/10 text-green-400' }
     ];
+
+    const fetchOrders = async () => {
+        try {
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                setOrders(data);
+            } else {
+                console.error("API response is not an array:", data);
+                setOrders([]);
+            }
+        } catch (error) {
+            console.error("Failed to fetch orders:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchOrders();
+    }, []);
+
+    const handleCreateOrder = async (orderData) => {
+        const newOrder = {
+            ...orderData,
+            order_id: `MF-${Date.now().toString().slice(-4)}`,
+            status: 'New Orders'
+        };
+
+        try {
+            const response = await fetch('/api/manufacturing', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newOrder)
+            });
+
+            if (response.ok) {
+                const savedOrder = await response.json();
+                setOrders([savedOrder, ...orders]);
+                setIsModalOpen(false);
+            }
+        } catch (error) {
+            console.error("Failed to create order:", error);
+        }
+    };
+
+    const handleDragEnd = async (event) => {
+        const { active, over } = event;
+
+        if (!over) return;
+
+        const orderId = active.id;
+        const newStatus = over.id; // The column ID is the status
+
+        // Find the current order
+        const currentOrder = orders.find(o => o.id === orderId);
+
+        // Optimistic Update
+        if (currentOrder && currentOrder.status !== newStatus) {
+            const updatedOrders = orders.map(order =>
+                order.id === orderId ? { ...order, status: newStatus } : order
+            );
+            setOrders(updatedOrders);
+
+            // API Call
+            try {
+                await fetch(`/api/manufacturing/${orderId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+            } catch (error) {
+                console.error("Failed to update status:", error);
+                // Revert on failure
+                fetchOrders();
+            }
+        }
+    };
+
+    const getOrdersByStatus = (status) => {
+        return orders.filter(order => order.status === status || (status === 'In Progress' && order.status === 'In Progress (Molding)'));
+        // Handle potential mismatch if I configured existing data differently, but here we strictly use the IDs defined in columns
+    };
+
+    const totalGold = orders.reduce((sum, order) => sum + (order.gold_weight || 0), 0);
 
     return (
         <div className="space-y-8 animate-fade-in h-[calc(100vh-8rem)] flex flex-col">
@@ -44,51 +115,110 @@ const Manufacturing = () => {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
                     <div className="bg-[#121418] px-4 py-2 rounded-lg border border-white/10 text-sm flex justify-between sm:justify-start gap-2">
-                        <span className="text-gray-400">Gold Allocated:</span> <span className="text-primary-gold font-bold">125.5 g</span>
+                        <span className="text-gray-400">Total Gold Allocated:</span>
+                        <span className="text-primary-gold font-bold">{totalGold.toFixed(2)} g</span>
                     </div>
-                    <button className="bg-primary-gold text-black px-6 py-2 rounded-xl font-bold hover:bg-yellow-400 transition-colors w-full sm:w-auto">
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="bg-primary-gold text-black px-6 py-2 rounded-xl font-bold hover:bg-yellow-400 transition-colors w-full sm:w-auto shadow-lg shadow-primary-gold/20"
+                    >
                         New Order
                     </button>
                 </div>
             </div>
 
-            {/* Kanban Board */}
-            <div className="flex-1 overflow-x-auto pb-4">
-                <div className="flex gap-6 h-full min-w-[1000px]">
-                    {workflow.map((column, idx) => (
-                        <div key={idx} className="flex-1 bg-[#121418] rounded-2xl border border-white/5 flex flex-col min-w-[300px]">
-                            <div className={`p-4 border-b border-white/5 flex justify-between items-center border-t-4 ${column.color} rounded-t-2xl`}>
-                                <h3 className="font-bold text-white">{column.title}</h3>
-                                <span className="bg-white/5 text-gray-400 px-2 py-0.5 rounded text-xs">{column.items.length}</span>
-                            </div>
-                            <div className="p-4 space-y-3 overflow-y-auto flex-1 custom-scrollbar">
-                                {column.items.map((item) => (
-                                    <div key={item.id} className="bg-[#0B0D10] p-4 rounded-xl border border-white/5 hover:border-white/20 cursor-pointer transition-all hover:shadow-lg group">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <span className="text-xs text-gray-500 font-mono">{item.id}</span>
-                                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${column.badge}`}>
-                                                {item.status || 'Active'}
-                                            </span>
-                                        </div>
-                                        <h4 className="font-bold text-white mb-1 group-hover:text-primary-gold transition-colors">{item.item}</h4>
-                                        <p className="text-sm text-gray-400 mb-3">{item.customer}</p>
-
-                                        {item.karigar && (
-                                            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/5">
-                                                <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center text-[10px] text-white">K</div>
-                                                <span className="text-xs text-gray-400">Karigar: {item.karigar}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                                <button className="w-full py-2 border border-dashed border-white/10 rounded-xl text-gray-500 text-sm hover:bg-white/5 hover:text-white transition-colors">
-                                    + Add Item
-                                </button>
-                            </div>
-                        </div>
-                    ))}
+            <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+                <div className="flex-1 overflow-x-auto pb-4">
+                    <div className="flex gap-6 h-full min-w-[1000px]">
+                        {columns.map((column) => (
+                            <DroppableColumn
+                                key={column.id}
+                                column={column}
+                                items={orders.filter(o => o.status === column.id)}
+                            />
+                        ))}
+                    </div>
                 </div>
+            </DndContext>
+
+            <NewManufacturingOrderModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSave={handleCreateOrder}
+            />
+        </div>
+    );
+};
+
+// Sub-components for DND
+
+import { useDroppable } from '@dnd-kit/core';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+
+const DroppableColumn = ({ column, items }) => {
+    const { setNodeRef } = useDroppable({
+        id: column.id,
+    });
+
+    return (
+        <div ref={setNodeRef} className="flex-1 bg-[#121418] rounded-2xl border border-white/5 flex flex-col min-w-[300px] h-full">
+            <div className={`p-4 border-b border-white/5 flex justify-between items-center border-t-4 ${column.color} rounded-t-2xl`}>
+                <h3 className="font-bold text-white">{column.title}</h3>
+                <span className="bg-white/5 text-gray-400 px-2 py-0.5 rounded text-xs">{items.length}</span>
             </div>
+            <div className="p-4 space-y-3 overflow-y-auto flex-1 custom-scrollbar">
+                {items.map((item) => (
+                    <DraggableCard key={item.id} item={item} badgeColor={column.badge} />
+                ))}
+
+                {items.length === 0 && (
+                    <div className="h-24 border-2 border-dashed border-white/5 rounded-xl flex items-center justify-center text-gray-600 text-sm">
+                        Drop items here
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const DraggableCard = ({ item, badgeColor }) => {
+    const { attributes, listeners, setNodeRef, transform } = useDraggable({
+        id: item.id,
+    });
+
+    const style = transform ? {
+        transform: CSS.Translate.toString(transform),
+    } : undefined;
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            {...listeners}
+            {...attributes}
+            className="bg-[#0B0D10] p-4 rounded-xl border border-white/5 hover:border-primary-gold/30 cursor-grab active:cursor-grabbing transition-all hover:shadow-lg group relative z-10"
+        >
+            <div className="flex justify-between items-start mb-2">
+                <span className="text-xs text-gray-500 font-mono">{item.order_id}</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full ${badgeColor}`}>
+                    {item.status}
+                </span>
+            </div>
+            <h4 className="font-bold text-white mb-1 group-hover:text-primary-gold transition-colors">{item.product_name}</h4>
+            <div className="flex justify-between items-center">
+                <p className="text-sm text-gray-400">{item.customer_name}</p>
+                {item.gold_weight > 0 && (
+                    <span className="text-xs text-primary-gold/80 font-mono">{item.gold_weight}g</span>
+                )}
+            </div>
+
+            {item.karigar_name && (
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/5">
+                    <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center text-[10px] text-white">K</div>
+                    <span className="text-xs text-gray-400">Karigar: {item.karigar_name}</span>
+                </div>
+            )}
         </div>
     );
 };
