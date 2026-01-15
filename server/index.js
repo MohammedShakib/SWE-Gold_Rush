@@ -801,10 +801,139 @@ app.put('/api/manufacturing/:id/status', async (req, res) => {
 
         res.json(result.recordset[0]);
     } catch (err) {
-        console.error("Error updating manufacturing status:", err);
+        console.error("Error updating order status:", err);
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
+
+// Admin Control Routes
+
+// GET /api/branches
+app.get('/api/branches', async (req, res) => {
+    try {
+        const pool = await sql.connect();
+        const result = await pool.request().query('SELECT * FROM branches');
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error fetching branches:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// POST /api/branches
+app.post('/api/branches', async (req, res) => {
+    const { name, location } = req.body;
+    try {
+        const pool = await sql.connect();
+        await pool.request()
+            .input('name', sql.NVarChar, name)
+            .input('location', sql.NVarChar, location)
+            .query(`
+                INSERT INTO branches (name, location, status, daily_sales, stock_value)
+                VALUES (@name, @location, 'Active', 0, '0')
+            `);
+        res.status(201).json({ message: "Branch created successfully" });
+    } catch (err) {
+        console.error("Error creating branch:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// PUT /api/branches/:id
+app.put('/api/branches/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, location, daily_sales, stock_value, status } = req.body;
+    try {
+        const pool = await sql.connect();
+        await pool.request()
+            .input('id', sql.Int, id)
+            .input('name', sql.NVarChar, name)
+            .input('location', sql.NVarChar, location)
+            .input('daily_sales', sql.Decimal(18, 2), daily_sales)
+            .input('stock_value', sql.NVarChar, stock_value)
+            .input('status', sql.NVarChar, status)
+            .query(`
+                UPDATE branches 
+                SET name = @name, location = @location, daily_sales = @daily_sales, stock_value = @stock_value, status = @status
+                WHERE id = @id
+            `);
+        res.json({ message: "Branch updated successfully" });
+    } catch (err) {
+        console.error("Error updating branch:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// DELETE /api/branches/:id
+app.delete('/api/branches/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const pool = await sql.connect();
+        await pool.request()
+            .input('id', sql.Int, id)
+            .query('DELETE FROM branches WHERE id = @id');
+        res.json({ message: "Branch deleted successfully" });
+    } catch (err) {
+        console.error("Error deleting branch:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// GET /api/stock-transfers
+app.get('/api/stock-transfers', async (req, res) => {
+    try {
+        const pool = await sql.connect();
+        const result = await pool.request().query('SELECT * FROM stock_transfers ORDER BY transfer_date DESC');
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error fetching transfers:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// POST /api/stock-transfers
+app.post('/api/stock-transfers', async (req, res) => {
+    const { from_branch, to_branch, items } = req.body;
+    try {
+        const transfer_id = `TR-${Math.floor(1000 + Math.random() * 9000)}`;
+        const pool = await sql.connect();
+
+        await pool.request()
+            .input('transfer_id', sql.NVarChar, transfer_id)
+            .input('from_branch', sql.NVarChar, from_branch)
+            .input('to_branch', sql.NVarChar, to_branch)
+            .input('items', sql.NVarChar, items)
+            .query(`
+                INSERT INTO stock_transfers (transfer_id, from_branch, to_branch, items, transfer_date, status)
+                VALUES (@transfer_id, @from_branch, @to_branch, @items, GETDATE(), 'Pending')
+            `);
+
+        res.status(201).json({ message: "Transfer created successfully" });
+    } catch (err) {
+        console.error("Error creating transfer:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// PUT /api/stock-transfers/:id/status
+app.put('/api/stock-transfers/:id/status', async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    try {
+        const pool = await sql.connect();
+        await pool.request()
+            .input('id', sql.Int, id)
+            .input('status', sql.NVarChar, status)
+            .query('UPDATE stock_transfers SET status = @status WHERE id = @id');
+
+        res.json({ message: "Transfer status updated" });
+    } catch (err) {
+        console.error("Error updating transfer status:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+
 
 // DELETE /api/manufacturing/:id
 app.delete('/api/manufacturing/:id', async (req, res) => {
