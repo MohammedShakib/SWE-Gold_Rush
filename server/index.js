@@ -50,6 +50,21 @@ connectDB().then(async () => {
         `;
         await pool.request().query(createRepairsTableQuery);
         console.log("Repair Tickets table initialized");
+
+        const createCustomersTableQuery = `
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='customers' AND xtype='U')
+            CREATE TABLE customers (
+                id INT IDENTITY(1,1) PRIMARY KEY,
+                name NVARCHAR(255) NOT NULL,
+                phone NVARCHAR(50) NULL,
+                type NVARCHAR(50) DEFAULT 'New',
+                total_spent DECIMAL(18, 2) DEFAULT 0,
+                last_visit DATETIME DEFAULT GETDATE(),
+                created_at DATETIME DEFAULT GETDATE()
+            );
+        `;
+        await pool.request().query(createCustomersTableQuery);
+        console.log("Customers table initialized");
     } catch (err) {
         console.error("Schema initialization failed:", err);
     }
@@ -444,6 +459,81 @@ app.get('/api/customers', async (req, res) => {
         res.json(result.recordset);
     } catch (err) {
         console.error("Error fetching customers:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// POST /api/customers
+app.post('/api/customers', async (req, res) => {
+    const { name, phone, type, total_spent, last_visit } = req.body;
+    try {
+        const pool = await sql.connect();
+        const insertQuery = `
+            INSERT INTO customers (name, phone, type, total_spent, last_visit)
+            OUTPUT INSERTED.*
+            VALUES (@name, @phone, @type, @total_spent, @last_visit)
+        `;
+        const result = await pool.request()
+            .input('name', sql.NVarChar, name)
+            .input('phone', sql.NVarChar, phone)
+            .input('type', sql.NVarChar, type || 'New')
+            .input('total_spent', sql.Decimal(18, 2), total_spent || 0)
+            .input('last_visit', sql.DateTime, last_visit || new Date())
+            .query(insertQuery);
+
+        res.status(201).json(result.recordset[0]);
+    } catch (err) {
+        console.error("Error creating customer:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// PUT /api/customers/:id
+app.put('/api/customers/:id', async (req, res) => {
+    const { id } = req.params;
+    const { type, name, phone } = req.body;
+    try {
+        const pool = await sql.connect();
+        // Dynamic update query
+        let query = 'UPDATE customers SET ';
+        const updates = [];
+        if (type) updates.push("type = @type");
+        if (name) updates.push("name = @name");
+        if (phone) updates.push("phone = @phone");
+
+        query += updates.join(", ");
+        query += " OUTPUT INSERTED.* WHERE id = @id";
+
+        const request = pool.request().input('id', sql.Int, id);
+        if (type) request.input('type', sql.NVarChar, type);
+        if (name) request.input('name', sql.NVarChar, name);
+        if (phone) request.input('phone', sql.NVarChar, phone);
+
+        const result = await request.query(query);
+
+        if (result.recordset.length === 0) return res.status(404).json({ error: "Customer not found" });
+
+        res.json(result.recordset[0]);
+    } catch (err) {
+        console.error("Error updating customer:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// DELETE /api/customers/:id
+app.delete('/api/customers/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const pool = await sql.connect();
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query('DELETE FROM customers WHERE id = @id');
+
+        if (result.rowsAffected[0] === 0) return res.status(404).json({ error: "Customer not found" });
+
+        res.json({ message: "Customer deleted successfully" });
+    } catch (err) {
+        console.error("Error deleting customer:", err);
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
