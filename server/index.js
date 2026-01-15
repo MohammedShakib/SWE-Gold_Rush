@@ -879,6 +879,77 @@ app.delete('/api/branches/:id', async (req, res) => {
     }
 });
 
+// GET /api/user-profile
+app.get('/api/user-profile', async (req, res) => {
+    try {
+        const pool = await sql.connect();
+        // Just get the first user for now as it's a single shop owner system mostly
+        const result = await pool.request().query('SELECT TOP 1 * FROM users');
+        if (result.recordset.length > 0) {
+            res.json(result.recordset[0]);
+        } else {
+            res.status(404).json({ error: "User not found" });
+        }
+    } catch (err) {
+        console.error("Error fetching user profile:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// PUT /api/user-profile
+app.put('/api/user-profile', async (req, res) => {
+    const { id, full_name, phone, identifier } = req.body;
+    try {
+        const pool = await sql.connect();
+        await pool.request()
+            .input('id', sql.Int, id)
+            .input('full_name', sql.NVarChar, full_name)
+            .input('phone', sql.NVarChar, phone)
+            .input('identifier', sql.NVarChar, identifier)
+            .query(`
+                UPDATE users 
+                SET full_name = @full_name, phone = @phone, identifier = @identifier
+                WHERE id = @id
+            `);
+        res.json({ message: "Profile updated successfully" });
+    } catch (err) {
+        console.error("Error updating user profile:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// POST /api/change-password
+app.post('/api/change-password', async (req, res) => {
+    const { userId, currentPassword, newPassword } = req.body;
+    try {
+        const pool = await sql.connect();
+
+        // precise verification (replace with hash comparison in production)
+        const userResult = await pool.request()
+            .input('id', sql.Int, userId)
+            .query('SELECT password FROM users WHERE id = @id');
+
+        if (userResult.recordset.length === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const user = userResult.recordset[0];
+        if (user.password !== currentPassword) {
+            return res.status(401).json({ error: "Incorrect current password" });
+        }
+
+        await pool.request()
+            .input('id', sql.Int, userId)
+            .input('password', sql.NVarChar, newPassword)
+            .query('UPDATE users SET password = @password WHERE id = @id');
+
+        res.json({ message: "Password updated successfully" });
+    } catch (err) {
+        console.error("Error changing password:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
 // GET /api/stock-transfers
 app.get('/api/stock-transfers', async (req, res) => {
     try {
