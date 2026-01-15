@@ -31,6 +31,25 @@ connectDB().then(async () => {
         `;
         await pool.request().query(createManufacturingTableQuery);
         console.log("Manufacturing table initialized");
+
+        const createRepairsTableQuery = `
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='repair_tickets' AND xtype='U')
+            CREATE TABLE repair_tickets (
+                id INT IDENTITY(1,1) PRIMARY KEY,
+                ticket_id NVARCHAR(50) NOT NULL,
+                customer_name NVARCHAR(255) NOT NULL,
+                customer_phone NVARCHAR(50) NULL,
+                item_name NVARCHAR(255) NOT NULL,
+                issue_description NVARCHAR(MAX) NOT NULL,
+                received_date DATETIME DEFAULT GETDATE(),
+                delivery_date DATETIME NULL,
+                status NVARCHAR(50) DEFAULT 'Active',
+                estimated_cost DECIMAL(18, 2) DEFAULT 0,
+                created_at DATETIME DEFAULT GETDATE()
+            );
+        `;
+        await pool.request().query(createRepairsTableQuery);
+        console.log("Repair Tickets table initialized");
     } catch (err) {
         console.error("Schema initialization failed:", err);
     }
@@ -741,6 +760,109 @@ app.get('/api/health', async (req, res) => {
     } catch (err) {
         console.error("Health check failed:", err);
         res.status(500).json({ status: 'disconnected', message: 'Database connection failed' });
+    }
+});
+
+// Repairs Routes
+
+// GET /api/repairs
+app.get('/api/repairs', async (req, res) => {
+    try {
+        const pool = await sql.connect();
+        const result = await pool.request().query('SELECT * FROM repair_tickets ORDER BY created_at DESC');
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error fetching repair tickets:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// POST /api/repairs
+app.post('/api/repairs', async (req, res) => {
+    const { customer_name, customer_phone, item_name, issue_description, estimated_cost, due_date } = req.body;
+
+    try {
+        const pool = await sql.connect();
+        const ticketId = `R-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+        const insertQuery = `
+            INSERT INTO repair_tickets (ticket_id, customer_name, customer_phone, item_name, issue_description, estimated_cost, delivery_date, status)
+            OUTPUT INSERTED.*
+            VALUES (@ticket_id, @customer_name, @customer_phone, @item_name, @issue_description, @estimated_cost, @delivery_date, 'Active')
+        `;
+
+        const result = await pool.request()
+            .input('ticket_id', sql.NVarChar, ticketId)
+            .input('customer_name', sql.NVarChar, customer_name)
+            .input('customer_phone', sql.NVarChar, customer_phone || null)
+            .input('item_name', sql.NVarChar, item_name)
+            .input('issue_description', sql.NVarChar, issue_description)
+            .input('estimated_cost', sql.Decimal(18, 2), estimated_cost || 0)
+            .input('delivery_date', sql.DateTime, due_date || null) // Mapping due_date from frontend to delivery_date in DB
+            .query(insertQuery);
+
+        res.status(201).json(result.recordset[0]);
+    } catch (err) {
+        console.error("Error creating repair ticket:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// PUT /api/repairs/:id
+app.put('/api/repairs/:id', async (req, res) => {
+    const { id } = req.params;
+    const { status, estimated_cost, delivery_date } = req.body;
+
+    try {
+        const pool = await sql.connect();
+        let query = 'UPDATE repair_tickets SET ';
+        const updates = [];
+
+        if (status) updates.push("status = @status");
+        if (estimated_cost) updates.push("estimated_cost = @estimated_cost");
+        if (delivery_date) updates.push("delivery_date = @delivery_date");
+
+        if (updates.length === 0) return res.status(400).json({ error: "No fields to update" });
+
+        query += updates.join(", ");
+        query += " OUTPUT INSERTED.* WHERE id = @id";
+
+        const request = pool.request().input('id', sql.Int, id);
+
+        if (status) request.input('status', sql.NVarChar, status);
+        if (estimated_cost) request.input('estimated_cost', sql.Decimal(18, 2), estimated_cost);
+        if (delivery_date) request.input('delivery_date', sql.DateTime, delivery_date);
+
+        const result = await request.query(query);
+
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: "Ticket not found" });
+        }
+
+        res.json(result.recordset[0]);
+    } catch (err) {
+        console.error("Error updating repair ticket:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// DELETE /api/repairs/:id
+app.delete('/api/repairs/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const pool = await sql.connect();
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query('DELETE FROM repair_tickets WHERE id = @id');
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: "Ticket not found" });
+        }
+
+        res.json({ message: "Ticket deleted successfully" });
+    } catch (err) {
+        console.error("Error deleting repair ticket:", err);
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
