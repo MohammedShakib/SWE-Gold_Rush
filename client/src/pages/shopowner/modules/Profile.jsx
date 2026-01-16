@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { User, MapPin, Plus, Store, Building2, Phone, Mail, X, Shield, Lock, CheckCircle, CreditCard, Calendar } from 'lucide-react';
 
 const Profile = () => {
@@ -210,64 +211,65 @@ const Profile = () => {
             </div>
 
             {/* Edit Profile Modal */}
-            {isEditing && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsEditing(false)}></div>
-                    <div className="relative bg-[#1E2024] p-8 rounded-2xl border border-white/10 w-full max-w-lg shadow-2xl animate-fade-in-up m-4">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold text-white">Edit Profile</h2>
-                            <button onClick={() => setIsEditing(false)} className="text-gray-400 hover:text-white">
+            {isEditing && createPortal(
+                <div className="modal-overlay">
+                    <div className="absolute inset-0" onClick={() => setIsEditing(false)}></div>
+                    <div className="modal-container max-w-lg" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2 className="modal-title">Edit Profile</h2>
+                            <button onClick={() => setIsEditing(false)} className="modal-close-btn">
                                 <X size={24} />
                             </button>
                         </div>
-                        <form onSubmit={handleUpdateProfile} className="space-y-4">
+                        <form onSubmit={handleUpdateProfile} className="modal-content">
                             <div>
-                                <label className="text-xs text-gray-400 uppercase font-bold block mb-1.5">Full Name</label>
+                                <label className="modal-label">Full Name</label>
                                 <input
                                     type="text"
                                     value={editForm.full_name}
                                     onChange={e => setEditForm({ ...editForm, full_name: e.target.value })}
-                                    className="w-full bg-[#121418] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-primary-gold"
+                                    className="modal-input"
                                     required
                                 />
                             </div>
                             <div>
-                                <label className="text-xs text-gray-400 uppercase font-bold block mb-1.5">Phone Number</label>
+                                <label className="modal-label">Phone Number</label>
                                 <input
                                     type="text"
                                     value={editForm.phone}
                                     onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
-                                    className="w-full bg-[#121418] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-primary-gold"
+                                    className="modal-input"
                                     required
                                 />
                             </div>
                             <div>
-                                <label className="text-xs text-gray-400 uppercase font-bold block mb-1.5">Email / Identifier</label>
+                                <label className="modal-label">Email / Identifier</label>
                                 <input
                                     type="text"
                                     value={editForm.identifier}
                                     onChange={e => setEditForm({ ...editForm, identifier: e.target.value })}
-                                    className="w-full bg-[#121418] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-primary-gold"
+                                    className="modal-input"
                                     required
                                 />
                             </div>
-                            <div className="flex justify-end gap-3 mt-6">
-                                <button type="button" onClick={() => setIsEditing(false)} className="px-6 py-2 rounded-xl text-gray-400 hover:bg-white/5">Cancel</button>
-                                <button type="submit" className="bg-primary-gold text-black px-6 py-2 rounded-xl font-bold hover:bg-yellow-400">Save Changes</button>
+                            <div className="modal-footer">
+                                <button type="button" onClick={() => setIsEditing(false)} className="modal-btn-cancel">Cancel</button>
+                                <button type="submit" className="modal-btn-primary">Save Changes</button>
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Change Password Modal */}
-            {isChangingPassword && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsChangingPassword(false)}></div>
-                    <div className="relative bg-[#1E2024] p-8 rounded-2xl border border-white/10 w-full max-w-lg shadow-2xl animate-fade-in-up m-4">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold text-white">Change Password</h2>
-                            <button onClick={() => setIsChangingPassword(false)} className="text-gray-400 hover:text-white">
+            {isChangingPassword && createPortal(
+                <div className="modal-overlay">
+                    <div className="absolute inset-0" onClick={() => setIsChangingPassword(false)}></div>
+                    <div className="modal-container max-w-lg" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2 className="modal-title">Change Password</h2>
+                            <button onClick={() => setIsChangingPassword(false)} className="modal-close-btn">
                                 <X size={24} />
                             </button>
                         </div>
@@ -278,44 +280,45 @@ const Profile = () => {
                             </div>
                         )}
 
-                        <form onSubmit={handleChangePassword} className="space-y-4">
+                        <form onSubmit={handleChangePassword} className="modal-content">
                             <div>
-                                <label className="text-xs text-gray-400 uppercase font-bold block mb-1.5">Current Password</label>
+                                <label className="modal-label">Current Password</label>
                                 <input
                                     type="password"
                                     value={passwordForm.currentPassword}
                                     onChange={e => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                                    className="w-full bg-[#121418] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-primary-gold"
+                                    className="modal-input"
                                     required
                                 />
                             </div>
                             <div>
-                                <label className="text-xs text-gray-400 uppercase font-bold block mb-1.5">New Password</label>
+                                <label className="modal-label">New Password</label>
                                 <input
                                     type="password"
                                     value={passwordForm.newPassword}
                                     onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                                    className="w-full bg-[#121418] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-primary-gold"
+                                    className="modal-input"
                                     required
                                 />
                             </div>
                             <div>
-                                <label className="text-xs text-gray-400 uppercase font-bold block mb-1.5">Confirm New Password</label>
+                                <label className="modal-label">Confirm New Password</label>
                                 <input
                                     type="password"
                                     value={passwordForm.confirmPassword}
                                     onChange={e => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                                    className="w-full bg-[#121418] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-primary-gold"
+                                    className="modal-input"
                                     required
                                 />
                             </div>
-                            <div className="flex justify-end gap-3 mt-6">
-                                <button type="button" onClick={() => setIsChangingPassword(false)} className="px-6 py-2 rounded-xl text-gray-400 hover:bg-white/5">Cancel</button>
-                                <button type="submit" className="bg-primary-gold text-black px-6 py-2 rounded-xl font-bold hover:bg-yellow-400">Update Password</button>
+                            <div className="modal-footer">
+                                <button type="button" onClick={() => setIsChangingPassword(false)} className="modal-btn-cancel">Cancel</button>
+                                <button type="submit" className="modal-btn-primary">Update Password</button>
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

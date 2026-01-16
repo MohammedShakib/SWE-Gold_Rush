@@ -34,6 +34,64 @@
     .section-subtitle {
         @apply text-center text-text-dim mb-12 text-lg;
     }
+
+    .fullscreen-modal-overlay {
+        padding: 0 !important;
+    }
+
+    .fullscreen-modal {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: none !important;
+        max-height: none !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+    }
+
+    /* Standard Modal Styles */
+    .modal-overlay {
+        @apply fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in;
+    }
+    
+    .modal-container {
+        @apply bg-[#121418] w-full max-w-lg rounded-2xl border border-white/10 shadow-2xl relative overflow-hidden;
+    }
+
+    .modal-header {
+        @apply p-6 border-b border-white/10 flex justify-between items-center relative z-10;
+    }
+
+    .modal-title {
+        @apply text-xl font-bold text-white;
+    }
+    
+    .modal-close-btn {
+        @apply text-gray-400 hover:text-white transition-colors;
+    }
+
+    .modal-content {
+        @apply p-6 space-y-4 relative z-10;
+    }
+
+    .modal-footer {
+        @apply pt-4 flex gap-3;
+    }
+
+    .modal-label {
+        @apply block text-sm text-gray-400 mb-1;
+    }
+
+    .modal-input {
+        @apply w-full bg-[#0B0D10] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-gold/50 transition-colors placeholder:text-gray-700;
+    }
+    
+    .modal-btn-cancel {
+        @apply flex-1 py-3 rounded-xl border border-white/10 text-gray-400 hover:bg-white/5 hover:text-white transition-colors font-medium;
+    }
+
+    .modal-btn-primary {
+        @apply flex-1 py-3 rounded-xl bg-primary-gold text-black font-bold hover:bg-yellow-400 transition-colors shadow-lg shadow-primary-gold/20 flex items-center justify-center gap-2;
+    }
 }
 
 @layer utilities {

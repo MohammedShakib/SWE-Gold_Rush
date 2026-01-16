@@ -627,7 +627,7 @@ app.put('/api/sales/:id', async (req, res) => {
 
 // POST /api/payment/init
 app.post('/api/payment/init', async (req, res) => {
-    const { cart } = req.body;
+    const { cart, paymentMethod } = req.body;
 
     if (!cart || cart.length === 0) {
         return res.status(400).json({ error: "Cart is empty" });
@@ -641,14 +641,19 @@ app.post('/api/payment/init', async (req, res) => {
 
         const pool = await sql.connect();
 
+        // Determine status and method based on input
+        const isCash = paymentMethod === 'Cash';
+        const saleStatus = isCash ? 'Completed' : 'Pending';
+        const method = isCash ? 'Cash' : 'SSLCommerz';
+
         // Insert Sale
         const saleInsert = await pool.request()
             .input('total_amount', sql.Decimal(18, 2), total_amount)
             .input('tax_amount', sql.Decimal(18, 2), tax_amount)
             .input('final_amount', sql.Decimal(18, 2), final_amount)
-            .input('payment_method', sql.NVarChar, 'SSLCommerz')
+            .input('payment_method', sql.NVarChar, method)
             .input('transaction_id', sql.NVarChar, tran_id)
-            .input('status', sql.NVarChar, 'Pending')
+            .input('status', sql.NVarChar, saleStatus)
             .query(`
                 INSERT INTO sales (total_amount, tax_amount, final_amount, payment_method, transaction_id, status)
                 OUTPUT INSERTED.id
@@ -671,7 +676,16 @@ app.post('/api/payment/init', async (req, res) => {
                 `);
         }
 
-        // Init SSLCommerz
+        // If Cash, return success immediately
+        if (isCash) {
+            return res.json({
+                message: "Cash payment recorded successfully",
+                success: true,
+                tran_id: tran_id
+            });
+        }
+
+        // Init SSLCommerz for Online Payment
         const data = {
             total_amount: final_amount,
             currency: 'BDT',
