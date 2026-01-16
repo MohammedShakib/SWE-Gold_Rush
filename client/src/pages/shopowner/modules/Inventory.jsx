@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import CustomAlert from '../../../components/CustomAlert';
 
 const Inventory = () => {
@@ -181,29 +182,35 @@ const Inventory = () => {
             />
 
             {/* Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-[#121418] border border-white/10 rounded-2xl p-6 w-full max-w-lg shadow-2xl">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold text-white">{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
-                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white">✕</button>
+            {isModalOpen && createPortal(
+                <div className="modal-overlay">
+                    <div className="absolute inset-0" onClick={() => setIsModalOpen(false)}></div>
+                    <div className="modal-container max-w-lg" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2 className="modal-title">{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
+                            <button onClick={() => setIsModalOpen(false)} className="modal-close-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
-                        <form onSubmit={handleSubmit} className="space-y-4">
+
+                        <form onSubmit={handleSubmit} className="modal-content">
                             <div>
-                                <label className="block text-gray-400 text-sm mb-1">Product Name</label>
+                                <label className="modal-label">Product Name</label>
                                 <input
                                     type="text"
                                     required
-                                    className="w-full bg-[#0B0D10] border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold"
+                                    className="modal-input"
                                     value={formData.name}
                                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                                 />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-gray-400 text-sm mb-1">Category</label>
+                                    <label className="modal-label">Category</label>
                                     <select
-                                        className="w-full bg-[#0B0D10] border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold"
+                                        className="modal-input"
                                         value={formData.category}
                                         onChange={e => setFormData({ ...formData, category: e.target.value })}
                                     >
@@ -216,9 +223,9 @@ const Inventory = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-gray-400 text-sm mb-1">Karat</label>
+                                    <label className="modal-label">Karat</label>
                                     <select
-                                        className="w-full bg-[#0B0D10] border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold"
+                                        className="modal-input"
                                         value={formData.karat}
                                         onChange={e => setFormData({ ...formData, karat: e.target.value })}
                                     >
@@ -231,21 +238,21 @@ const Inventory = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-gray-400 text-sm mb-1">Weight (g)</label>
+                                    <label className="modal-label">Weight (g)</label>
                                     <input
                                         type="number"
                                         step="0.01"
-                                        className="w-full bg-[#0B0D10] border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold"
+                                        className="modal-input"
                                         value={formData.weight}
                                         onChange={e => setFormData({ ...formData, weight: e.target.value })}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-gray-400 text-sm mb-1">Price (BDT)</label>
+                                    <label className="modal-label">Price (BDT)</label>
                                     <input
                                         type="number"
                                         required
-                                        className="w-full bg-[#0B0D10] border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold"
+                                        className="modal-input"
                                         value={formData.price}
                                         onChange={e => setFormData({ ...formData, price: e.target.value })}
                                     />
@@ -253,18 +260,18 @@ const Inventory = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-gray-400 text-sm mb-1">Stock Quantity</label>
+                                    <label className="modal-label">Stock Quantity</label>
                                     <input
                                         type="number"
-                                        className="w-full bg-[#0B0D10] border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold"
+                                        className="modal-input"
                                         value={formData.stock_quantity}
                                         onChange={e => setFormData({ ...formData, stock_quantity: e.target.value })}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-gray-400 text-sm mb-1">Status</label>
+                                    <label className="modal-label">Status</label>
                                     <select
-                                        className="w-full bg-[#0B0D10] border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-gold"
+                                        className="modal-input"
                                         value={formData.status}
                                         onChange={e => setFormData({ ...formData, status: e.target.value })}
                                     >
@@ -274,15 +281,16 @@ const Inventory = () => {
                                     </select>
                                 </div>
                             </div>
-                            <div className="pt-4 flex gap-3">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl font-bold transition-colors">Cancel</button>
-                                <button type="submit" className="flex-1 bg-primary-gold text-black py-3 rounded-xl font-bold hover:bg-yellow-400 transition-colors">
+                            <div className="modal-footer">
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="modal-btn-cancel">Cancel</button>
+                                <button type="submit" className="modal-btn-primary">
                                     {editingProduct ? 'Update Product' : 'Add Product'}
                                 </button>
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -389,7 +397,7 @@ const Inventory = () => {
                     </table>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

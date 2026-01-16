@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 const AdminControl = () => {
     const [branches, setBranches] = useState([]);
@@ -254,161 +255,164 @@ const AdminControl = () => {
             </div>
 
             {/* New Transfer Modal */}
-            {showModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setShowModal(false)}></div>
-                    <div className="relative bg-[#1E2024] p-8 rounded-2xl border border-white/10 w-full max-w-lg shadow-2xl animate-fade-in-up m-4">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold text-white">New Stock Transfer</h2>
-                            <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white">
+            {showModal && createPortal(
+                <div className="modal-overlay">
+                    <div className="absolute inset-0" onClick={() => setShowModal(false)}></div>
+                    <div className="modal-container max-w-lg" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2 className="modal-title">New Stock Transfer</h2>
+                            <button onClick={() => setShowModal(false)} className="modal-close-btn">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form onSubmit={handleSubmit} className="modal-content">
                             <div>
-                                <label className="text-xs text-gray-400 uppercase font-bold block mb-1.5">From Branch</label>
-                                <select name="from_branch" value={newTransfer.from_branch} onChange={handleInputChange} className="w-full bg-[#121418] border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-primary-gold">
-                                    {branches.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
+                                <label className="modal-label">From Branch</label>
+                                <select name="from_branch" value={newTransfer.from_branch} onChange={handleInputChange} className="modal-input">
+                                    {branches.map(b => <option key={b.id} value={b.name} className="bg-[#121418]">{b.name}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="text-xs text-gray-400 uppercase font-bold block mb-1.5">To Branch</label>
-                                <select name="to_branch" value={newTransfer.to_branch} onChange={handleInputChange} className="w-full bg-[#121418] border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-primary-gold">
-                                    {branches.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
+                                <label className="modal-label">To Branch</label>
+                                <select name="to_branch" value={newTransfer.to_branch} onChange={handleInputChange} className="modal-input">
+                                    {branches.map(b => <option key={b.id} value={b.name} className="bg-[#121418]">{b.name}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="text-xs text-gray-400 uppercase font-bold block mb-1.5">Items / Description</label>
-                                <textarea name="items" required value={newTransfer.items} onChange={handleInputChange} className="w-full bg-[#121418] border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-primary-gold h-24 resize-none" placeholder="E.g., 10x Gold Necklace, 5x Diamond Ring..."></textarea>
+                                <label className="modal-label">Items / Description</label>
+                                <textarea name="items" required value={newTransfer.items} onChange={handleInputChange} className="modal-input h-24 resize-none" placeholder="E.g., 10x Gold Necklace, 5x Diamond Ring..."></textarea>
                             </div>
-                            <div className="flex justify-end gap-3 mt-6">
-                                <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2 rounded-xl text-gray-400 hover:bg-white/5">Cancel</button>
-                                <button type="submit" className="bg-primary-gold text-black px-6 py-2 rounded-xl font-bold hover:bg-yellow-400">Create Transfer</button>
+                            <div className="modal-footer">
+                                <button type="button" onClick={() => setShowModal(false)} className="modal-btn-cancel">Cancel</button>
+                                <button type="submit" className="modal-btn-primary">Create Transfer</button>
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Add Branch Modal */}
-            {showBranchModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setShowBranchModal(false)}></div>
-                    <div className="relative bg-[#1E2024] p-8 rounded-2xl border border-white/10 w-full max-w-lg shadow-2xl animate-fade-in-up m-4">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold text-white">Add New Branch</h2>
-                            <button onClick={() => setShowBranchModal(false)} className="text-gray-400 hover:text-white">
+            {showBranchModal && createPortal(
+                <div className="modal-overlay">
+                    <div className="absolute inset-0" onClick={() => setShowBranchModal(false)}></div>
+                    <div className="modal-container max-w-lg" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2 className="modal-title">Add New Branch</h2>
+                            <button onClick={() => setShowBranchModal(false)} className="modal-close-btn">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
-                        <form onSubmit={handleAddBranch} className="space-y-4">
+                        <form onSubmit={handleAddBranch} className="modal-content">
                             <div>
-                                <label className="text-xs text-gray-400 uppercase font-bold block mb-1.5">Branch Name</label>
-                                <input type="text" name="name" required value={newBranch.name} onChange={handleBranchInputChange} className="w-full bg-[#121418] border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-primary-gold" placeholder="e.g. Sylhet Branch" />
+                                <label className="modal-label">Branch Name</label>
+                                <input type="text" name="name" required value={newBranch.name} onChange={handleBranchInputChange} className="modal-input" placeholder="e.g. Sylhet Branch" />
                             </div>
                             <div>
-                                <label className="text-xs text-gray-400 uppercase font-bold block mb-1.5">Location</label>
-                                <input type="text" name="location" required value={newBranch.location} onChange={handleBranchInputChange} className="w-full bg-[#121418] border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-primary-gold" placeholder="e.g. Zindabazar, Sylhet" />
+                                <label className="modal-label">Location</label>
+                                <input type="text" name="location" required value={newBranch.location} onChange={handleBranchInputChange} className="modal-input" placeholder="e.g. Zindabazar, Sylhet" />
                             </div>
-                            <div className="flex justify-end gap-3 mt-6">
-                                <button type="button" onClick={() => setShowBranchModal(false)} className="px-6 py-2 rounded-xl text-gray-400 hover:bg-white/5">Cancel</button>
-                                <button type="submit" className="bg-primary-gold text-black px-6 py-2 rounded-xl font-bold hover:bg-yellow-400">Add Branch</button>
+                            <div className="modal-footer">
+                                <button type="button" onClick={() => setShowBranchModal(false)} className="modal-btn-cancel">Cancel</button>
+                                <button type="submit" className="modal-btn-primary">Add Branch</button>
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Edit Branch Modal */}
-            {editingBranch && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setEditingBranch(null)}></div>
-                    <div className="relative bg-[#1E2024] p-8 rounded-2xl border border-white/10 w-full max-w-lg shadow-2xl animate-fade-in-up m-4">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold text-white">Edit Branch Info</h2>
-                            <button onClick={() => setEditingBranch(null)} className="text-gray-400 hover:text-white">
+            {editingBranch && createPortal(
+                <div className="modal-overlay">
+                    <div className="absolute inset-0" onClick={() => setEditingBranch(null)}></div>
+                    <div className="modal-container max-w-lg" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2 className="modal-title">Edit Branch Info</h2>
+                            <button onClick={() => setEditingBranch(null)} className="modal-close-btn">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
-                        <form onSubmit={handleUpdateBranch} className="space-y-4">
+                        <form onSubmit={handleUpdateBranch} className="modal-content">
                             <div>
-                                <label className="text-xs text-gray-400 uppercase font-bold block mb-1.5">Branch Name</label>
-                                <input type="text" name="name" required value={editingBranch.name} onChange={handleEditBranchChange} className="w-full bg-[#121418] border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-primary-gold" />
+                                <label className="modal-label">Branch Name</label>
+                                <input type="text" name="name" required value={editingBranch.name} onChange={handleEditBranchChange} className="modal-input" />
                             </div>
                             <div>
-                                <label className="text-xs text-gray-400 uppercase font-bold block mb-1.5">Location</label>
-                                <input type="text" name="location" required value={editingBranch.location} onChange={handleEditBranchChange} className="w-full bg-[#121418] border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-primary-gold" />
+                                <label className="modal-label">Location</label>
+                                <input type="text" name="location" required value={editingBranch.location} onChange={handleEditBranchChange} className="modal-input" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-xs text-gray-400 uppercase font-bold block mb-1.5">Daily Sales (৳)</label>
-                                    <input type="number" name="daily_sales" value={editingBranch.daily_sales} onChange={handleEditBranchChange} className="w-full bg-[#121418] border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-primary-gold" />
+                                    <label className="modal-label">Daily Sales (৳)</label>
+                                    <input type="number" name="daily_sales" value={editingBranch.daily_sales} onChange={handleEditBranchChange} className="modal-input" />
                                 </div>
                                 <div>
-                                    <label className="text-xs text-gray-400 uppercase font-bold block mb-1.5">Stock Value</label>
-                                    <input type="text" name="stock_value" value={editingBranch.stock_value} onChange={handleEditBranchChange} className="w-full bg-[#121418] border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-primary-gold" />
+                                    <label className="modal-label">Stock Value</label>
+                                    <input type="text" name="stock_value" value={editingBranch.stock_value} onChange={handleEditBranchChange} className="modal-input" />
                                 </div>
                             </div>
                             <div>
-                                <label className="text-xs text-gray-400 uppercase font-bold block mb-1.5">Status</label>
-                                <select name="status" value={editingBranch.status} onChange={handleEditBranchChange} className="w-full bg-[#121418] border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-primary-gold">
-                                    <option value="Active">Active</option>
-                                    <option value="Inactive">Inactive</option>
-                                    <option value="Maintenance">Maintenance</option>
+                                <label className="modal-label">Status</label>
+                                <select name="status" value={editingBranch.status} onChange={handleEditBranchChange} className="modal-input">
+                                    <option value="Active" className="bg-[#121418]">Active</option>
+                                    <option value="Inactive" className="bg-[#121418]">Inactive</option>
+                                    <option value="Maintenance" className="bg-[#121418]">Maintenance</option>
                                 </select>
                             </div>
-                            <div className="flex justify-between items-center mt-6">
-                                <button type="button" onClick={() => handleDeleteBranch(editingBranch.id)} className="text-red-400 hover:text-red-300 text-sm font-bold">Delete Branch</button>
+                            <div className="modal-footer justify-between">
+                                <button type="button" onClick={() => handleDeleteBranch(editingBranch.id)} className="text-red-400 hover:text-red-300 text-sm font-bold px-2">Delete Branch</button>
                                 <div className="flex gap-3">
-                                    <button type="button" onClick={() => setEditingBranch(null)} className="px-6 py-2 rounded-xl text-gray-400 hover:bg-white/5">Cancel</button>
-                                    <button type="submit" className="bg-primary-gold text-black px-6 py-2 rounded-xl font-bold hover:bg-yellow-400">Save Changes</button>
+                                    <button type="button" onClick={() => setEditingBranch(null)} className="modal-btn-cancel">Cancel</button>
+                                    <button type="submit" className="modal-btn-primary">Save Changes</button>
                                 </div>
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* View Transfer Details Modal */}
-            {viewTransfer && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setViewTransfer(null)}></div>
-                    <div className="relative bg-[#1E2024] p-8 rounded-2xl border border-white/10 w-full max-w-lg shadow-2xl animate-fade-in-up m-4">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold text-white">Transfer Details</h2>
-                            <button onClick={() => setViewTransfer(null)} className="text-gray-400 hover:text-white">
+            {viewTransfer && createPortal(
+                <div className="modal-overlay">
+                    <div className="absolute inset-0" onClick={() => setViewTransfer(null)}></div>
+                    <div className="modal-container max-w-lg" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2 className="modal-title">Transfer Details</h2>
+                            <button onClick={() => setViewTransfer(null)} className="modal-close-btn">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
-                        <div className="space-y-4">
+                        <div className="modal-content">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-xs text-gray-400 uppercase font-bold block mb-1">Transfer ID</label>
+                                    <label className="modal-label">Transfer ID</label>
                                     <p className="text-white font-mono">{viewTransfer.transfer_id}</p>
                                 </div>
                                 <div>
-                                    <label className="text-xs text-gray-400 uppercase font-bold block mb-1">Date</label>
+                                    <label className="modal-label">Date</label>
                                     <p className="text-white">{new Date(viewTransfer.transfer_date).toLocaleString()}</p>
                                 </div>
                                 <div>
-                                    <label className="text-xs text-gray-400 uppercase font-bold block mb-1">From</label>
+                                    <label className="modal-label">From</label>
                                     <p className="text-white">{viewTransfer.from_branch}</p>
                                 </div>
                                 <div>
-                                    <label className="text-xs text-gray-400 uppercase font-bold block mb-1">To</label>
+                                    <label className="modal-label">To</label>
                                     <p className="text-white">{viewTransfer.to_branch}</p>
                                 </div>
                             </div>
-                            <div>
-                                <label className="text-xs text-gray-400 uppercase font-bold block mb-1">Status</label>
+                            <div className="mt-4">
+                                <label className="modal-label">Status</label>
                                 <span className={`px-2 py-1 rounded text-xs font-bold border inline-block ${viewTransfer.status === 'Received' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
                                     viewTransfer.status === 'In Transit' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
                                         'bg-blue-500/10 text-blue-400 border-blue-500/20'
@@ -416,16 +420,17 @@ const AdminControl = () => {
                                     {viewTransfer.status}
                                 </span>
                             </div>
-                            <div className="bg-[#121418] p-4 rounded-xl border border-white/5">
-                                <label className="text-xs text-gray-400 uppercase font-bold block mb-2">Items</label>
+                            <div className="bg-[#121418] p-4 rounded-xl border border-white/5 mt-4">
+                                <label className="modal-label mb-2">Items</label>
                                 <p className="text-gray-300 whitespace-pre-wrap">{viewTransfer.items}</p>
                             </div>
                         </div>
-                        <div className="flex justify-end gap-3 mt-6">
-                            <button onClick={() => setViewTransfer(null)} className="px-6 py-2 rounded-xl bg-white/5 text-white hover:bg-white/10">Close</button>
+                        <div className="modal-footer mt-6">
+                            <button onClick={() => setViewTransfer(null)} className="modal-btn-cancel w-full">Close</button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

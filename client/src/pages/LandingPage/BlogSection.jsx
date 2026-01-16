@@ -145,28 +145,26 @@ const BlogSection = () => {
 
             {/* Blog Modal */}
             {selectedPost && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedPost(null)}>
-                    <div
-                        className="bg-[#1A1D21] w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-primary-gold/20 shadow-2xl relative animate-fade-in"
-                        onClick={e => e.stopPropagation()}
-                    >
+                <div className="modal-overlay">
+                    <div className="absolute inset-0" onClick={() => setSelectedPost(null)}></div>
+                    <div className="modal-container max-w-3xl p-0 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
                         <button
                             onClick={() => setSelectedPost(null)}
-                            className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors backdrop-blur-md"
+                            className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors backdrop-blur-md"
                         >
                             ✕
                         </button>
 
-                        <div className="h-64 relative">
+                        <div className="h-64 relative flex-shrink-0">
                             <img
                                 src={selectedPost.image}
                                 alt={selectedPost.title.EN}
                                 className="w-full h-full object-cover"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-[#1A1D21] via-transparent to-transparent"></div>
+                            <div className="absolute inset-0 bg-gradient-to-t from-[#121418] via-transparent to-transparent"></div>
                         </div>
 
-                        <div className="p-8 md:p-10 -mt-10 relative">
+                        <div className="p-8 md:p-10 -mt-10 relative overflow-y-auto custom-scrollbar">
                             <div className="flex items-center gap-3 mb-6">
                                 <span className="px-3 py-1 bg-primary-gold/10 text-primary-gold text-xs font-bold rounded-full border border-primary-gold/20 backdrop-blur-md">
                                     {selectedPost.date}
@@ -178,7 +176,7 @@ const BlogSection = () => {
                             </h2>
 
                             <div className="prose prose-invert prose-gold max-w-none">
-                                <p className="text-gray-300 leading-relaxed text-lg">
+                                <p className="text-gray-300 leading-relaxed text-lg whitespace-pre-line">
                                     {selectedPost.content[language] || selectedPost.content.EN}
                                 </p>
                             </div>

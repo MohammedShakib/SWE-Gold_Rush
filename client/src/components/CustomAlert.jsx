@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 const CustomAlert = ({ isOpen, onClose, title, message, type = 'info', onConfirm }) => {
     const [animate, setAnimate] = useState(false);
@@ -14,23 +15,14 @@ const CustomAlert = ({ isOpen, onClose, title, message, type = 'info', onConfirm
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            {/* Backdrop */}
-            <div
-                className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${animate ? 'opacity-100' : 'opacity-0'}`}
-                onClick={onClose}
-            ></div>
-
-            {/* Modal */}
-            <div
-                className={`relative bg-[#121418] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl transform transition-all duration-300 ${animate ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 translate-y-4'}`}
-            >
-                <div className="flex flex-col items-center text-center">
+    return createPortal(
+        <div className="modal-overlay">
+            <div className={`modal-container max-w-sm ${animate ? 'scale-100 opacity-100' : 'scale-95 opacity-0'} transition-all duration-300 p-0`} onClick={e => e.stopPropagation()}>
+                <div className="p-6 text-center space-y-4">
                     {/* Icon */}
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${type === 'danger' ? 'bg-red-500/10 text-red-500' :
-                            type === 'success' ? 'bg-green-500/10 text-green-500' :
-                                'bg-primary-gold/10 text-primary-gold'
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 ${type === 'danger' ? 'bg-red-500/10 text-red-500' :
+                        type === 'success' ? 'bg-green-500/10 text-green-500' :
+                            'bg-primary-gold/10 text-primary-gold'
                         }`}>
                         {type === 'danger' ? (
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
@@ -47,22 +39,22 @@ const CustomAlert = ({ isOpen, onClose, title, message, type = 'info', onConfirm
                         )}
                     </div>
 
-                    <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
-                    <p className="text-gray-400 text-sm mb-6">{message}</p>
+                    <h3 className="modal-title text-center">{title}</h3>
+                    <p className="text-gray-400 text-sm">{message}</p>
 
-                    <div className="flex gap-3 w-full">
+                    <div className="flex gap-3 w-full justify-center pt-2">
                         {onConfirm ? (
                             <>
                                 <button
                                     onClick={onClose}
-                                    className="flex-1 bg-white/5 hover:bg-white/10 text-white py-2.5 rounded-xl font-bold transition-colors text-sm"
+                                    className="modal-btn-cancel py-2 text-sm"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={() => { onConfirm(); onClose(); }}
-                                    className={`flex-1 py-2.5 rounded-xl font-bold transition-colors text-sm shadow-lg ${type === 'danger' ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-500/20' :
-                                            'bg-primary-gold text-black hover:bg-yellow-400 shadow-primary-gold/20'
+                                    className={`modal-btn-primary py-2 text-sm shadow-lg ${type === 'danger' ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-500/20' :
+                                        'bg-primary-gold text-black hover:bg-yellow-400 shadow-primary-gold/20'
                                         }`}
                                 >
                                     Confirm
@@ -71,7 +63,7 @@ const CustomAlert = ({ isOpen, onClose, title, message, type = 'info', onConfirm
                         ) : (
                             <button
                                 onClick={onClose}
-                                className="w-full bg-primary-gold text-black py-2.5 rounded-xl font-bold hover:bg-yellow-400 transition-colors text-sm shadow-lg shadow-primary-gold/20"
+                                className="modal-btn-primary w-full py-2 text-sm"
                             >
                                 Okay
                             </button>
@@ -79,7 +71,8 @@ const CustomAlert = ({ isOpen, onClose, title, message, type = 'info', onConfirm
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, Calendar, User, Search, Check } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Plus, X, Check } from 'lucide-react';
 import CustomAlert from '../../../components/CustomAlert';
 
 const Installments = () => {
@@ -245,24 +246,23 @@ const Installments = () => {
                 )}
             </div>
 
-            {/* Create Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-[#121418] border border-white/10 rounded-2xl w-full max-w-lg p-6 relative">
-                        <button
-                            onClick={() => setIsModalOpen(false)}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-white"
-                        >
-                            <X size={24} />
-                        </button>
+            {/* Create Modal - Portal to Body */}
+            {isModalOpen && createPortal(
+                <div className="modal-overlay">
+                    <div className="absolute inset-0" onClick={() => setIsModalOpen(false)}></div>
+                    <div className="modal-container max-w-lg" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2 className="modal-title">Create Installment Plan</h2>
+                            <button onClick={() => setIsModalOpen(false)} className="modal-close-btn">
+                                <X size={24} />
+                            </button>
+                        </div>
 
-                        <h2 className="text-2xl font-bold text-white mb-6">Create Installment Plan</h2>
-
-                        <div className="space-y-4">
+                        <div className="modal-content">
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Customer</label>
+                                <label className="modal-label">Customer</label>
                                 <select
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-gold/50"
+                                    className="modal-input"
                                     value={formData.customer_id}
                                     onChange={(e) => setFormData({ ...formData, customer_id: e.target.value })}
                                 >
@@ -274,11 +274,11 @@ const Installments = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Item Description</label>
+                                <label className="modal-label">Item Description</label>
                                 <input
                                     type="text"
                                     placeholder="e.g. 22K Gold Chain Booking"
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-gold/50"
+                                    className="modal-input"
                                     value={formData.item_description}
                                     onChange={(e) => setFormData({ ...formData, item_description: e.target.value })}
                                 />
@@ -286,19 +286,19 @@ const Installments = () => {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm text-gray-400 mb-2">Total Amount (৳)</label>
+                                    <label className="modal-label">Total Amount (৳)</label>
                                     <input
                                         type="number"
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-gold/50"
+                                        className="modal-input"
                                         value={formData.total_amount}
                                         onChange={(e) => setFormData({ ...formData, total_amount: e.target.value })}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-gray-400 mb-2">Advance/Paid (৳)</label>
+                                    <label className="modal-label">Advance/Paid (৳)</label>
                                     <input
                                         type="number"
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-gold/50"
+                                        className="modal-input"
                                         value={formData.paid_amount}
                                         onChange={(e) => setFormData({ ...formData, paid_amount: e.target.value })}
                                     />
@@ -306,45 +306,45 @@ const Installments = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Next Due Date</label>
+                                <label className="modal-label">Next Due Date</label>
                                 <input
                                     type="date"
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-gold/50"
+                                    className="modal-input"
                                     value={formData.due_date}
                                     onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
                                 />
                             </div>
+                        </div>
 
-                            <button
-                                onClick={handleCreate}
-                                className="w-full bg-primary-gold text-black font-bold py-3 rounded-xl hover:bg-yellow-500 transition-colors shadow-lg shadow-primary-gold/20 mt-4"
-                            >
-                                Create Plan
-                            </button>
+                        <div className="modal-footer">
+                            <button onClick={() => setIsModalOpen(false)} className="modal-btn-cancel">Cancel</button>
+                            <button onClick={handleCreate} className="modal-btn-primary">Create Plan</button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
-            {/* History & Payment Modal */}
-            {historyModalOpen && selectedPlan && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-[#121418] border border-white/10 rounded-2xl w-full max-w-2xl p-0 overflow-hidden flex flex-col max-h-[90vh]">
+            {/* History & Payment Modal - Portal to Body */}
+            {historyModalOpen && selectedPlan && createPortal(
+                <div className="modal-overlay">
+                    <div className="absolute inset-0" onClick={() => setHistoryModalOpen(false)}></div>
+                    <div className="modal-container max-w-2xl h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
                         {/* Header */}
-                        <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+                        <div className="modal-header">
                             <div>
-                                <h2 className="text-xl font-bold text-white">Payment History</h2>
+                                <h2 className="modal-title">Payment History</h2>
                                 <p className="text-sm text-primary-gold mt-1">{selectedPlan.item_description} - {selectedPlan.customer_name}</p>
                             </div>
                             <button
                                 onClick={() => setHistoryModalOpen(false)}
-                                className="text-gray-400 hover:text-white transition-colors"
+                                className="modal-close-btn"
                             >
                                 <X size={24} />
                             </button>
                         </div>
 
-                        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
                             {/* Summary Cards */}
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="bg-white/5 p-4 rounded-xl text-center border border-white/5">
@@ -369,19 +369,19 @@ const Installments = () => {
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
                                     <div>
-                                        <label className="text-xs text-gray-400 block mb-1">Amount</label>
+                                        <label className="modal-label">Amount</label>
                                         <input
                                             type="number"
-                                            className="w-full bg-[#121418] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-primary-gold"
+                                            className="w-full bg-[#121418] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-primary-gold focus:outline-none"
                                             placeholder="0.00"
                                             value={paymentForm.amount}
                                             onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-xs text-gray-400 block mb-1">Method</label>
+                                        <label className="modal-label">Method</label>
                                         <select
-                                            className="w-full bg-[#121418] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-primary-gold"
+                                            className="w-full bg-[#121418] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-primary-gold focus:outline-none"
                                             value={paymentForm.method}
                                             onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
                                         >
@@ -432,12 +432,11 @@ const Installments = () => {
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
 };
 
 export default Installments;
-
-

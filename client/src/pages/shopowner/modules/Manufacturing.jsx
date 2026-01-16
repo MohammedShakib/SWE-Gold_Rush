@@ -1,9 +1,26 @@
-import { useState, useEffect } from 'react';
-import { DndContext, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
+import { useState, useEffect, useMemo } from 'react';
+import {
+    DndContext,
+    useSensor,
+    useSensors,
+    PointerSensor,
+    DragOverlay,
+    closestCorners,
+    defaultDropAnimationSideEffects
+} from '@dnd-kit/core';
+import {
+    SortableContext,
+    verticalListSortingStrategy,
+    useSortable,
+    arrayMove
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { createPortal } from 'react-dom';
 import NewManufacturingOrderModal from '../../../components/NewManufacturingOrderModal';
 
 const Manufacturing = () => {
     const [orders, setOrders] = useState([]);
+    const [activeId, setActiveId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(true);
 
@@ -47,7 +64,9 @@ const Manufacturing = () => {
         const newOrder = {
             ...orderData,
             order_id: `MF-${Date.now().toString().slice(-4)}`,
-            status: 'New Orders'
+            status: 'New Orders',
+            // Assign a temporary unique ID for dnd-kit until backend returns one
+            id: Date.now()
         };
 
         try {
@@ -64,48 +83,133 @@ const Manufacturing = () => {
             }
         } catch (error) {
             console.error("Failed to create order:", error);
+            // Optimistic add failure handling could go here
         }
+    };
+
+    // Helper to find column for an item
+    const findColumn = (id) => {
+        const order = orders.find(o => o.id === id);
+        return order ? order.status : null;
+    };
+
+    const handleDragStart = (event) => {
+        setActiveId(event.active.id);
+    };
+
+    const handleDragOver = (event) => {
+        const { active, over } = event;
+        if (!over) return;
+
+        const activeId = active.id;
+        const overId = over.id;
+
+        const activeColumn = findColumn(activeId);
+        const overColumn = findColumn(overId) || (columns.find(c => c.id === overId)?.id);
+
+        if (!activeColumn || !overColumn || activeColumn === overColumn) {
+            return;
+        }
+
+        // Updating state during drag for smoothness
+        const activeOrder = orders.find(o => o.id === activeId);
+
+        // Update the order's status to the new column immediately for visual feedback
+        setOrders((prev) => {
+            const activeItems = prev.filter(o => o.status === activeColumn);
+            const overItems = prev.filter(o => o.status === overColumn);
+
+            const activeIndex = activeItems.findIndex(o => o.id === activeId);
+            const overIndex = overItems.findIndex(o => o.id === overId);
+
+            let newIndex;
+            if (overId in columns.map(c => c.id)) {
+                // We're over a container
+                newIndex = overItems.length + 1;
+            } else {
+                const isBelowOverItem =
+                    over &&
+                    active.rect.current.translated &&
+                    active.rect.current.translated.top >
+                    over.rect.top + over.rect.height;
+
+                const modifier = isBelowOverItem ? 1 : 0;
+
+                newIndex = overIndex >= 0 ? overIndex + modifier : overItems.length + 1;
+            }
+
+            return prev.map(o => {
+                if (o.id === activeId) {
+                    return { ...o, status: overColumn };
+                }
+                return o;
+            });
+        });
     };
 
     const handleDragEnd = async (event) => {
         const { active, over } = event;
+        const activeId = active.id;
+        const overId = over ? over.id : null;
+
+        setActiveId(null);
 
         if (!over) return;
 
-        const orderId = active.id;
-        const newStatus = over.id; // The column ID is the status
+        const activeColumn = findColumn(activeId);
+        const overColumn = findColumn(overId) || (columns.find(c => c.id === overId)?.id);
 
-        // Find the current order
-        const currentOrder = orders.find(o => o.id === orderId);
+        // If the item dropped in the same column but different position (sorting)
+        // or just dropped in a valid column
+        if (activeColumn && overColumn) {
+            const activeIndex = orders.findIndex(o => o.id === activeId);
+            const overIndex = orders.findIndex(o => o.id === overId);
 
-        // Optimistic Update
-        if (currentOrder && currentOrder.status !== newStatus) {
-            const updatedOrders = orders.map(order =>
-                order.id === orderId ? { ...order, status: newStatus } : order
-            );
-            setOrders(updatedOrders);
+            if (activeIndex !== overIndex) {
+                setOrders((items) => arrayMove(items, activeIndex, overIndex));
+            }
 
-            // API Call
-            try {
-                await fetch(`/api/manufacturing/${orderId}/status`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: newStatus })
-                });
-            } catch (error) {
-                console.error("Failed to update status:", error);
-                // Revert on failure
-                fetchOrders();
+            // Update Backend with new status (and potentially order index if backend supports it)
+            // Check if status changed
+            const currentOrder = orders.find(o => o.id === activeId);
+            if (currentOrder && currentOrder.status !== overColumn) {
+                // Final update ensuring status is set correctly
+                const updatedOrders = orders.map(o =>
+                    o.id === activeId ? { ...o, status: overColumn } : o
+                );
+                setOrders(updatedOrders);
+
+                try {
+                    await fetch(`/api/manufacturing/${activeId}/status`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: overColumn })
+                    });
+                } catch (error) {
+                    console.error("Failed to update status:", error);
+                    fetchOrders(); // Revert
+                }
+            } else if (currentOrder && currentOrder.status === overColumn) {
+                // Even if status didn't change, we might want to create a PUT request if we were persisting sort order
+                // For now, no backend sort order persistence, so we just assume client sort is temporary
             }
         }
     };
 
-    const getOrdersByStatus = (status) => {
-        return orders.filter(order => order.status === status || (status === 'In Progress' && order.status === 'In Progress (Molding)'));
-        // Handle potential mismatch if I configured existing data differently, but here we strictly use the IDs defined in columns
-    };
-
     const totalGold = orders.reduce((sum, order) => sum + (order.gold_weight || 0), 0);
+
+    const activeOrder = activeId ? orders.find(o => o.id === activeId) : null;
+    const activeOrderBadge = activeOrder ? columns.find(c => c.id === activeOrder.status)?.badge : '';
+
+    const dropAnimation = {
+        sideEffects: defaultDropAnimationSideEffects({
+            styles: {
+                active: {
+                    opacity: '0.5',
+                },
+            },
+        }),
+    };
 
     return (
         <div className="space-y-8 animate-fade-in h-[calc(100vh-8rem)] flex flex-col">
@@ -128,7 +232,13 @@ const Manufacturing = () => {
                 </div>
             </div>
 
-            <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCorners}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragEnd={handleDragEnd}
+            >
                 <div className="flex-1 overflow-x-auto pb-4">
                     <div className="flex gap-6 h-full min-w-[1000px]">
                         {columns.map((column) => (
@@ -140,6 +250,15 @@ const Manufacturing = () => {
                         ))}
                     </div>
                 </div>
+
+                {createPortal(
+                    <DragOverlay dropAnimation={dropAnimation}>
+                        {activeOrder ? (
+                            <OrderCard item={activeOrder} badgeColor={activeOrderBadge} isOverlay />
+                        ) : null}
+                    </DragOverlay>,
+                    document.body
+                )}
             </DndContext>
 
             <NewManufacturingOrderModal
@@ -151,54 +270,65 @@ const Manufacturing = () => {
     );
 };
 
-// Sub-components for DND
-
-import { useDroppable } from '@dnd-kit/core';
-import { useDraggable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
-
 const DroppableColumn = ({ column, items }) => {
-    const { setNodeRef } = useDroppable({
-        id: column.id,
-    });
+    // We sort by local index (array order) since we don't have a sort index from DB yet
+    const itemIds = useMemo(() => items.map(i => i.id), [items]);
 
     return (
-        <div ref={setNodeRef} className="flex-1 bg-[#121418] rounded-2xl border border-white/5 flex flex-col min-w-[300px] h-full">
+        <div className="flex-1 bg-[#121418] rounded-2xl border border-white/5 flex flex-col min-w-[300px] h-full">
             <div className={`p-4 border-b border-white/5 flex justify-between items-center border-t-4 ${column.color} rounded-t-2xl`}>
                 <h3 className="font-bold text-white">{column.title}</h3>
                 <span className="bg-white/5 text-gray-400 px-2 py-0.5 rounded text-xs">{items.length}</span>
             </div>
-            <div className="p-4 space-y-3 overflow-y-auto flex-1 custom-scrollbar">
-                {items.map((item) => (
-                    <DraggableCard key={item.id} item={item} badgeColor={column.badge} />
-                ))}
 
-                {items.length === 0 && (
-                    <div className="h-24 border-2 border-dashed border-white/5 rounded-xl flex items-center justify-center text-gray-600 text-sm">
-                        Drop items here
-                    </div>
-                )}
-            </div>
+            <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                <div className="p-4 space-y-3 overflow-y-auto flex-1 custom-scrollbar">
+                    {items.map((item) => (
+                        <SortableOrderCard key={item.id} item={item} badgeColor={column.badge} />
+                    ))}
+                    {items.length === 0 && (
+                        <div className="h-24 border-2 border-dashed border-white/5 rounded-xl flex items-center justify-center text-gray-600 text-sm">
+                            Drop items here
+                        </div>
+                    )}
+                </div>
+            </SortableContext>
         </div>
     );
 };
 
-const DraggableCard = ({ item, badgeColor }) => {
-    const { attributes, listeners, setNodeRef, transform } = useDraggable({
-        id: item.id,
-    });
+const SortableOrderCard = ({ item, badgeColor }) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: item.id });
 
-    const style = transform ? {
-        transform: CSS.Translate.toString(transform),
-    } : undefined;
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.3 : 1,
+    };
 
     return (
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="touch-none">
+            <OrderCard item={item} badgeColor={badgeColor} />
+        </div>
+    );
+};
+
+// Separated Card Component for reusability in DragOverlay
+const OrderCard = ({ item, badgeColor, isOverlay }) => {
+    return (
         <div
-            ref={setNodeRef}
-            style={style}
-            {...listeners}
-            {...attributes}
-            className="bg-[#0B0D10] p-4 rounded-xl border border-white/5 hover:border-primary-gold/30 cursor-grab active:cursor-grabbing transition-all hover:shadow-lg group relative z-10"
+            className={`
+                bg-[#0B0D10] p-4 rounded-xl border border-white/5 
+                ${isOverlay ? 'shadow-2xl scale-105 border-primary-gold/50 cursor-grabbing' : 'hover:border-primary-gold/30 cursor-grab'} 
+                transition-all group relative z-10
+            `}
         >
             <div className="flex justify-between items-start mb-2">
                 <span className="text-xs text-gray-500 font-mono">{item.order_id}</span>
