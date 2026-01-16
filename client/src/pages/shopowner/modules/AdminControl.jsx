@@ -24,9 +24,13 @@ const AdminControl = () => {
 
     const fetchData = async () => {
         try {
+            const shopownerId = localStorage.getItem('shopownerId');
+            const userId = localStorage.getItem('userId');
+            const queryParam = shopownerId ? `shopownerId=${shopownerId}` : `userId=${userId}`;
+
             const [branchesRes, transfersRes] = await Promise.all([
-                fetch('/api/branches'),
-                fetch('/api/stock-transfers')
+                fetch(`/api/branches?${queryParam}`),
+                fetch(`/api/stock-transfers?${queryParam}`)
             ]);
             const branchesData = await branchesRes.json();
             const transfersData = await transfersRes.json();
@@ -55,10 +59,13 @@ const AdminControl = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            const shopownerId = localStorage.getItem('shopownerId');
+            const userId = localStorage.getItem('userId');
+
             const res = await fetch('/api/stock-transfers', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newTransfer)
+                body: JSON.stringify({ ...newTransfer, shopownerId, userId })
             });
             if (res.ok) {
                 setShowModal(false);
@@ -77,10 +84,17 @@ const AdminControl = () => {
     const handleAddBranch = async (e) => {
         e.preventDefault();
         try {
+            // Add IDs
+            const payload = {
+                ...newBranch,
+                shopownerId: localStorage.getItem('shopownerId'),
+                userId: localStorage.getItem('userId')
+            };
+
             const res = await fetch('/api/branches', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newBranch)
+                body: JSON.stringify(payload)
             });
             if (res.ok) {
                 setShowBranchModal(false);
@@ -222,7 +236,7 @@ const AdminControl = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {transfers.length === 0 ? (
+                                {!Array.isArray(transfers) || transfers.length === 0 ? (
                                     <tr><td colSpan="7" className="p-4 text-center">No transfers found.</td></tr>
                                 ) : (
                                     transfers.map((transfer) => (

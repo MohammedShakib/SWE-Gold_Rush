@@ -57,12 +57,17 @@ const Inventory = () => {
 
     const fetchProducts = async () => {
         try {
-            const res = await fetch('/api/inventory');
+            const activeBranch = localStorage.getItem('activeBranch') || 'Main Branch';
+            const userId = localStorage.getItem('userId');
+            const shopownerId = localStorage.getItem('shopownerId');
+
+            const queryParam = shopownerId ? `shopownerId=${shopownerId}` : `userId=${userId}`;
+            const res = await fetch(`/api/inventory?branch=${encodeURIComponent(activeBranch)}&${queryParam}`);
             const data = await res.json();
             setProducts(data);
             setLoading(false);
         } catch (err) {
-            console.error("Failed to fetch inventory", err);
+            console.error("Error fetching products:", err);
             setLoading(false);
         }
     };
@@ -105,20 +110,31 @@ const Inventory = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const url = editingProduct ? `/api/inventory/${editingProduct.id}` : '/api/inventory';
-        const method = editingProduct ? 'PUT' : 'POST';
-
         try {
-            const response = await fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
+            const activeBranch = localStorage.getItem('activeBranch') || 'Main Branch';
+            const userId = localStorage.getItem('userId');
+            let response;
+            if (editingProduct) {
+                // Update
+                response = await fetch(`/api/inventory/${editingProduct.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...formData, branch: activeBranch, userId })
+                });
+            } else {
+                // Create
+                const shopownerId = localStorage.getItem('shopownerId');
+                response = await fetch('/api/inventory', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...formData, branch: activeBranch, userId, shopownerId })
+                });
+            }
 
             if (response.ok) {
                 showAlert(
                     'Success',
-                    editingProduct ? 'Product updated successfully.' : 'New product added to inventory.',
+                    editingProduct ? 'Product updated successfully' : 'Product added successfully',
                     'success'
                 );
                 setIsModalOpen(false);

@@ -1,55 +1,81 @@
+import { useState, useEffect } from 'react';
 import { SalesIcon, InventoryIcon, RepairsIcon } from '../components/Icons';
 
 const DashboardHome = () => {
-    // Demo Data
-    const stats = [
-        {
-            title: 'Total Sales (Today)',
-            value: '৳ 1,24,500',
-            trend: '+12.5%',
-            isPositive: true,
-            icon: SalesIcon,
-            color: 'text-green-400'
-        },
-        {
-            title: 'Gold Rate (22K)',
-            value: '৳ 11,250 / g',
-            trend: '+0.8%',
-            isPositive: true,
-            icon: InventoryIcon,
-            color: 'text-primary-gold'
-        },
-        {
-            title: 'Pending Orders',
-            value: '8',
-            trend: '-2',
-            isPositive: true, // Less pending is good? Or maybe it means less business? Let's assume it's just a count.
-            icon: InventoryIcon,
-            color: 'text-blue-400'
-        },
-        {
-            title: 'Active Repairs',
-            value: '12',
-            trend: '+3',
-            isPositive: false, // More repairs might be backlog
-            icon: RepairsIcon,
-            color: 'text-orange-400'
-        },
-    ];
+    const activeBranch = localStorage.getItem('activeBranch') || 'Main Branch';
+    const [stats, setStats] = useState([
+        { title: 'Total Sales (Today)', value: '৳ 0', trend: '0%', isPositive: true, icon: SalesIcon, color: 'text-green-400' },
+        { title: 'Gold Rate (22K)', value: '৳ 11,250 / g', trend: '+0.8%', isPositive: true, icon: InventoryIcon, color: 'text-primary-gold' },
+        { title: 'Pending Orders', value: '0', trend: '0', isPositive: true, icon: InventoryIcon, color: 'text-blue-400' },
+        { title: 'Active Repairs', value: '0', trend: '0', isPositive: false, icon: RepairsIcon, color: 'text-orange-400' },
+    ]);
+    const [recentActivity, setRecentActivity] = useState([]);
 
-    const recentActivity = [
-        { id: 1, type: 'Sale', message: 'Sold 22K Gold Necklace to Mrs. Rahman', time: '10 mins ago', amount: '+ ৳ 85,000' },
-        { id: 2, type: 'Repair', message: 'Received Diamond Ring for polishing', time: '45 mins ago', amount: 'Est. ৳ 2,000' },
-        { id: 3, type: 'Stock', message: 'Added 50g 21K Gold Chain to inventory', time: '2 hours ago', amount: 'Stock Update' },
-        { id: 4, type: 'Sale', message: 'Sold Gold Earring (3g)', time: '3 hours ago', amount: '+ ৳ 32,500' },
-    ];
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                // Parallel fetch for dashboard data
+                const shopownerId = localStorage.getItem('shopownerId');
+                const userId = localStorage.getItem('userId');
+                const queryParam = shopownerId ? `shopownerId=${shopownerId}` : `userId=${userId}`;
+
+                const [salesRes, repairsRes, manufacturingRes] = await Promise.all([
+                    fetch(`/api/sales?branch=${encodeURIComponent(activeBranch)}&${queryParam}`),
+                    fetch(`/api/repairs?branch=${encodeURIComponent(activeBranch)}&${queryParam}`),
+                    fetch(`/api/manufacturing?branch=${encodeURIComponent(activeBranch)}&${queryParam}`)
+                ]);
+
+                const sales = await salesRes.json();
+                const repairs = await repairsRes.json();
+                const manufacturing = await manufacturingRes.json();
+
+                // Calculate Total Sales Today
+                const today = new Date().toISOString().slice(0, 10);
+                const todaySales = sales.filter(s => s.sale_date.startsWith(today))
+                    .reduce((acc, curr) => acc + (curr.final_amount || 0), 0);
+
+                // Calculate Counts
+                const pendingOrders = manufacturing.filter(m => m.status !== 'Completed').length;
+                const activeRepairsCount = repairs.filter(r => r.status === 'Active').length;
+
+                // Update Stats
+                setStats(prev => [
+                    { ...prev[0], value: `৳ ${todaySales.toLocaleString()}` },
+                    prev[1], // Keep Gold Rate static for now
+                    { ...prev[2], value: pendingOrders.toString() },
+                    { ...prev[3], value: activeRepairsCount.toString() }
+                ]);
+
+                // Update Recent Activity (Combine and Sort)
+                const activities = [
+                    ...sales.slice(0, 3).map(s => ({
+                        id: `sale-${s.id}`, type: 'Sale', message: `Sale #${s.transaction_id}`,
+                        time: new Date(s.sale_date).toLocaleTimeString(), amount: `+ ৳ ${s.final_amount}`
+                    })),
+                    ...repairs.slice(0, 3).map(r => ({
+                        id: `repair-${r.id}`, type: 'Repair', message: `Repair: ${r.item_name}`,
+                        time: new Date(r.received_date).toLocaleTimeString(), amount: `Est. ৳ ${r.estimated_cost}`
+                    }))
+                ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 5);
+
+                setRecentActivity(activities);
+
+            } catch (error) {
+                console.error("Error fetching dashboard data:", error);
+            }
+        };
+
+        fetchData();
+    }, [activeBranch]);
 
     return (
         <div className="space-y-8 animate-fade-in">
             <div className="flex justify-between items-end">
                 <div>
                     <h1 className="text-3xl font-bold text-white">Dashboard Overview</h1>
-                    <p className="text-gray-400 mt-1">Welcome back, Admin. Here's what's happening today.</p>
+                    <p className="text-gray-400 mt-1">
+                        Displaying data for <span className="text-primary-gold font-bold">{activeBranch}</span>
+                    </p>
                 </div>
                 <div className="text-right">
                     <p className="text-sm text-gray-400">Current Gold Rate (22K)</p>
@@ -89,12 +115,12 @@ const DashboardHome = () => {
                         <button className="text-sm text-primary-gold hover:underline">View All</button>
                     </div>
                     <div className="divide-y divide-white/5">
-                        {recentActivity.map((activity) => (
+                        {recentActivity.length > 0 ? recentActivity.map((activity) => (
                             <div key={activity.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
                                 <div className="flex items-center gap-4">
                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${activity.type === 'Sale' ? 'bg-green-500/10 text-green-400' :
-                                            activity.type === 'Repair' ? 'bg-orange-500/10 text-orange-400' :
-                                                'bg-blue-500/10 text-blue-400'
+                                        activity.type === 'Repair' ? 'bg-orange-500/10 text-orange-400' :
+                                            'bg-blue-500/10 text-blue-400'
                                         }`}>
                                         {activity.type === 'Sale' ? <SalesIcon className="w-5 h-5" /> :
                                             activity.type === 'Repair' ? <RepairsIcon className="w-5 h-5" /> :
@@ -107,7 +133,9 @@ const DashboardHome = () => {
                                 </div>
                                 <span className="text-sm font-bold text-gray-300">{activity.amount}</span>
                             </div>
-                        ))}
+                        )) : (
+                            <p className="p-4 text-gray-500 text-center">No recent activity for this branch.</p>
+                        )}
                     </div>
                 </div>
 

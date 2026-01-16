@@ -25,7 +25,11 @@ const CRM = () => {
 
     const fetchCustomers = async () => {
         try {
-            const res = await fetch('/api/customers');
+            const activeBranch = localStorage.getItem('activeBranch') || 'Main Branch';
+            const userId = localStorage.getItem('userId');
+            const shopownerId = localStorage.getItem('shopownerId');
+            const queryParam = shopownerId ? `shopownerId=${shopownerId}` : `userId=${userId}`;
+            const res = await fetch(`/api/customers?branch=${encodeURIComponent(activeBranch)}&${queryParam}`);
             const data = await res.json();
             setCustomers(data);
             setLoading(false);
@@ -42,10 +46,13 @@ const CRM = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            const activeBranch = localStorage.getItem('activeBranch') || 'Main Branch';
+            const userId = localStorage.getItem('userId');
+            const shopownerId = localStorage.getItem('shopownerId');
             const res = await fetch('/api/customers', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newCustomer)
+                body: JSON.stringify({ ...newCustomer, branch: activeBranch, userId, shopownerId })
             });
             if (res.ok) {
                 setShowModal(false);

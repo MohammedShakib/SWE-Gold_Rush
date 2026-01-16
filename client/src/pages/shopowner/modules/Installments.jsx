@@ -35,7 +35,11 @@ const Installments = () => {
 
     const fetchInstallments = () => {
         setLoading(true);
-        fetch('/api/installments')
+        const activeBranch = localStorage.getItem('activeBranch') || 'Main Branch';
+        const userId = localStorage.getItem('userId');
+        const shopownerId = localStorage.getItem('shopownerId');
+        const queryParam = shopownerId ? `shopownerId=${shopownerId}` : `userId=${userId}`;
+        fetch(`/api/installments?branch=${encodeURIComponent(activeBranch)}&${queryParam}`)
             .then(res => res.json())
             .then(data => {
                 setPlans(data);
@@ -49,7 +53,11 @@ const Installments = () => {
     };
 
     const fetchCustomers = () => {
-        fetch('/api/customers')
+        const activeBranch = localStorage.getItem('activeBranch') || 'Main Branch';
+        const userId = localStorage.getItem('userId');
+        const shopownerId = localStorage.getItem('shopownerId');
+        const queryParam = shopownerId ? `shopownerId=${shopownerId}` : `userId=${userId}`;
+        fetch(`/api/customers?branch=${encodeURIComponent(activeBranch)}&${queryParam}`)
             .then(res => res.json())
             .then(data => setCustomers(data))
             .catch(err => console.error(err));
@@ -61,10 +69,13 @@ const Installments = () => {
             return;
         }
 
+        const activeBranch = localStorage.getItem('activeBranch') || 'Main Branch';
+        const userId = localStorage.getItem('userId');
+        const shopownerId = localStorage.getItem('shopownerId');
         fetch('/api/installments', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
+            body: JSON.stringify({ ...formData, branch: activeBranch, userId, shopownerId })
         })
             .then(res => {
                 if (res.ok) {
