@@ -4,6 +4,8 @@ import Header from './components/Header';
 import LandingPage from './pages/LandingPage/LandingPage';
 import Footer from './components/Footer';
 import SignIn from './pages/Auth/SignIn';
+import SignUp from './pages/Auth/SignUp';
+import Subscription from './pages/Auth/Subscription';
 // import ShopOwnerSignIn from './pages/shopowner/SignIn';
 import DashboardLayout from './pages/shopowner/DashboardLayout';
 import DashboardHome from './pages/shopowner/modules/DashboardHome';
@@ -32,7 +34,8 @@ function App() {
                         </>
                     } />
                     <Route path="/signin" element={<SignIn />} />
-                    <Route path="/signup" element={<SignIn />} />
+                    <Route path="/signup" element={<SignUp />} />
+                    <Route path="/subscription" element={<Subscription />} />
 
                     {/* Shop Owner Routes */}
                     {/* <Route path="/shopowner/login" element={<ShopOwnerSignIn />} /> - DEPRECATED */}

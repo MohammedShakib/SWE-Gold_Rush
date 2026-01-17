@@ -1,26 +1,14 @@
 const { sql, connectDB } = require('./db');
-
-const checkData = async () => {
+connectDB().then(async () => {
     try {
-        console.log("Connecting...");
-        await connectDB();
         const pool = await sql.connect();
+        const result = await pool.request().query("SELECT id, full_name, identifier, shopowner_id FROM shopowners");
+        console.table(result.recordset);
 
-        console.log("Checking Customers...");
-        const customers = await pool.request().query('SELECT * FROM customers');
-        console.log(`Count: ${customers.recordset.length}`);
-        console.log(customers.recordset);
-
-        console.log("Checking Products...");
-        const products = await pool.request().query('SELECT * FROM products');
-        console.log(`Count: ${products.recordset.length}`);
-        console.log(products.recordset);
-
-        process.exit(0);
+        const branches = await pool.request().query("SELECT id, name, user_id, shopowner_id FROM branches");
+        console.table(branches.recordset);
     } catch (err) {
-        console.error("Error:", err);
-        process.exit(1);
+        console.error(err);
     }
-};
-
-checkData();
+    process.exit(0);
+});

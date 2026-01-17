@@ -41,7 +41,11 @@ const Manufacturing = () => {
 
     const fetchOrders = async () => {
         try {
-            const response = await fetch('/api/manufacturing');
+            const activeBranch = localStorage.getItem('activeBranch') || 'Main Branch';
+            const userId = localStorage.getItem('userId');
+            const shopownerId = localStorage.getItem('shopownerId');
+            const queryParam = shopownerId ? `shopownerId=${shopownerId}` : `userId=${userId}`;
+            const response = await fetch(`/api/manufacturing?branch=${encodeURIComponent(activeBranch)}&${queryParam}`);
             const data = await response.json();
             if (Array.isArray(data)) {
                 setOrders(data);
@@ -70,10 +74,13 @@ const Manufacturing = () => {
         };
 
         try {
+            const activeBranch = localStorage.getItem('activeBranch') || 'Main Branch';
+            const userId = localStorage.getItem('userId');
+            const shopownerId = localStorage.getItem('shopownerId');
             const response = await fetch('/api/manufacturing', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newOrder)
+                body: JSON.stringify({ ...newOrder, branch: activeBranch, userId, shopownerId })
             });
 
             if (response.ok) {

@@ -31,7 +31,12 @@ const Sales = () => {
 
     useEffect(() => {
         // Fetch Products
-        fetch('/api/inventory')
+        const activeBranch = localStorage.getItem('activeBranch') || 'Main Branch';
+        const userId = localStorage.getItem('userId');
+        const shopownerId = localStorage.getItem('shopownerId');
+        const queryParam = shopownerId ? `shopownerId=${shopownerId}` : `userId=${userId}`;
+
+        fetch(`/api/inventory?branch=${encodeURIComponent(activeBranch)}&${queryParam}`)
             .then(res => res.json())
             .then(data => {
                 setProducts(data);
@@ -113,10 +118,14 @@ const Sales = () => {
         if (paymentMethod === 'Cash') {
             showAlert('Confirm Cash Payment', `Total Amount: ৳ ${total.toLocaleString()}`, 'info', async () => {
                 try {
+                    const activeBranch = localStorage.getItem('activeBranch') || 'Main Branch';
+                    const userId = localStorage.getItem('userId');
+                    const shopownerId = localStorage.getItem('shopownerId');
+
                     const res = await fetch('/api/payment/init', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ cart, paymentMethod: 'Cash' })
+                        body: JSON.stringify({ cart, paymentMethod: 'Cash', branch: activeBranch, userId, shopownerId })
                     });
                     const data = await res.json();
 
@@ -136,10 +145,14 @@ const Sales = () => {
         }
 
         try {
+            const activeBranch = localStorage.getItem('activeBranch') || 'Main Branch';
+            const userId = localStorage.getItem('userId');
+            const shopownerId = localStorage.getItem('shopownerId');
+
             const res = await fetch('/api/payment/init', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cart, paymentMethod: 'Online' })
+                body: JSON.stringify({ cart, paymentMethod: 'Online', branch: activeBranch, userId, shopownerId })
             });
             const data = await res.json();
 
@@ -231,7 +244,12 @@ const Sales = () => {
     useEffect(() => {
         if (activeTab === 'history') {
             setLoading(true);
-            fetch('/api/sales')
+            const activeBranch = localStorage.getItem('activeBranch') || 'Main Branch';
+            const userId = localStorage.getItem('userId');
+            const shopownerId = localStorage.getItem('shopownerId');
+            const queryParam = shopownerId ? `shopownerId=${shopownerId}` : `userId=${userId}`;
+
+            fetch(`/api/sales?branch=${encodeURIComponent(activeBranch)}&${queryParam}`)
                 .then(res => res.json())
                 .then(data => {
                     setSalesHistory(data);
@@ -580,136 +598,136 @@ const Sales = () => {
                         </div>
                     </div>
                 </div>,
-                    document.body
+                document.body
             )}
 
-                    {/* View Details Modal */}
-                    {viewingSaleDetails && createPortal(
-                        <div className="modal-overlay">
-                            <div className="absolute inset-0" onClick={() => setViewingSaleDetails(null)}></div>
-                            <div className="modal-container max-w-2xl h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                                {/* Header */}
-                                <div className="modal-header">
-                                    <div>
-                                        <h2 className="modal-title">Sale Details</h2>
-                                        <p className="text-sm text-gray-400 font-mono mt-1">{viewingSaleDetails.sale.transaction_id}</p>
-                                    </div>
-                                    <button onClick={() => setViewingSaleDetails(null)} className="modal-close-btn">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
+            {/* View Details Modal */}
+            {viewingSaleDetails && createPortal(
+                <div className="modal-overlay">
+                    <div className="absolute inset-0" onClick={() => setViewingSaleDetails(null)}></div>
+                    <div className="modal-container max-w-2xl h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        {/* Header */}
+                        <div className="modal-header">
+                            <div>
+                                <h2 className="modal-title">Sale Details</h2>
+                                <p className="text-sm text-gray-400 font-mono mt-1">{viewingSaleDetails.sale.transaction_id}</p>
+                            </div>
+                            <button onClick={() => setViewingSaleDetails(null)} className="modal-close-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                            {/* Sale Info */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                                <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                    <p className="text-xs text-gray-500 uppercase font-bold mb-1">Date</p>
+                                    <p className="text-white text-sm">{new Date(viewingSaleDetails.sale.sale_date).toLocaleDateString()}</p>
+                                    <p className="text-gray-400 text-xs">{new Date(viewingSaleDetails.sale.sale_date).toLocaleTimeString()}</p>
                                 </div>
-
-                                {/* Content */}
-                                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-                                    {/* Sale Info */}
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                                        <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                                            <p className="text-xs text-gray-500 uppercase font-bold mb-1">Date</p>
-                                            <p className="text-white text-sm">{new Date(viewingSaleDetails.sale.sale_date).toLocaleDateString()}</p>
-                                            <p className="text-gray-400 text-xs">{new Date(viewingSaleDetails.sale.sale_date).toLocaleTimeString()}</p>
-                                        </div>
-                                        <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                                            <p className="text-xs text-gray-500 uppercase font-bold mb-1">Method</p>
-                                            <p className="text-white text-sm">{viewingSaleDetails.sale.payment_method}</p>
-                                        </div>
-                                        <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                                            <p className="text-xs text-gray-500 uppercase font-bold mb-1">Status</p>
-                                            <span className={`inline-block px-2 py-1 rounded text-xs font-bold mt-1 ${viewingSaleDetails.sale.status === 'Completed' ? 'bg-green-500/20 text-green-400' :
-                                                viewingSaleDetails.sale.status === 'Failed' ? 'bg-red-500/20 text-red-400' :
-                                                    'bg-yellow-500/20 text-yellow-400'
-                                                }`}>
-                                                {viewingSaleDetails.sale.status}
-                                            </span>
-                                        </div>
-                                        <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                                            <p className="text-xs text-gray-500 uppercase font-bold mb-1">Total</p>
-                                            <p className="text-primary-gold font-bold text-lg">৳ {viewingSaleDetails.sale.final_amount.toLocaleString()}</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Items Table */}
-                                    <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-                                        <span className="w-1 h-6 bg-primary-gold rounded-full"></span>
-                                        Purchased Items ({viewingSaleDetails.items.length})
-                                    </h3>
-                                    <div className="overflow-hidden rounded-xl border border-white/10">
-                                        <table className="w-full text-left text-sm">
-                                            <thead className="bg-white/5 text-gray-400 uppercase text-xs">
-                                                <tr>
-                                                    <th className="py-3 px-4 font-medium">Item</th>
-                                                    <th className="py-3 px-4 font-medium text-center">Qty</th>
-                                                    <th className="py-3 px-4 font-medium text-right">Price</th>
-                                                    <th className="py-3 px-4 font-medium text-right">Total</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-white/5">
-                                                {viewLoading && viewingSaleDetails.items.length === 0 ? (
-                                                    <tr>
-                                                        <td colSpan="4" className="py-8 text-center text-gray-500">
-                                                            <div className="flex flex-col items-center gap-2">
-                                                                <div className="w-6 h-6 border-2 border-primary-gold border-t-transparent rounded-full animate-spin"></div>
-                                                                <span>Loading items...</span>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ) : viewingSaleDetails.items.length === 0 ? (
-                                                    <tr>
-                                                        <td colSpan="4" className="py-8 text-center text-gray-500">No items found for this sale.</td>
-                                                    </tr>
-                                                ) : (
-                                                    viewingSaleDetails.items.map((item, index) => (
-                                                        <tr key={index} className="hover:bg-white/5 transition-colors">
-                                                            <td className="py-3 px-4">
-                                                                <div className="flex items-center gap-3">
-                                                                    {item.image_url ? (
-                                                                        <div className="w-10 h-10 rounded-lg bg-black/40 overflow-hidden flex-shrink-0">
-                                                                            <img src={item.image_url} alt="" className="w-full h-full object-cover" />
-                                                                        </div>
-                                                                    ) : (
-                                                                        <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-lg flex-shrink-0">💎</div>
-                                                                    )}
-                                                                    <div>
-                                                                        <p className="text-white font-medium">{item.product_name}</p>
-                                                                        <p className="text-xs text-gray-500">{item.product_code}</p>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="py-3 px-4 text-center text-gray-300">x{item.quantity}</td>
-                                                            <td className="py-3 px-4 text-right text-gray-300">৳ {item.price_at_sale.toLocaleString()}</td>
-                                                            <td className="py-3 px-4 text-right text-white font-bold">৳ {item.total_price.toLocaleString()}</td>
-                                                        </tr>
-                                                    ))
-                                                )}
-                                            </tbody>
-                                            <tfoot className="bg-white/5 border-t border-white/10">
-                                                <tr>
-                                                    <td colSpan="3" className="py-3 px-4 text-right text-gray-400">Subtotal</td>
-                                                    <td className="py-3 px-4 text-right text-gray-300">৳ {viewingSaleDetails.sale.total_amount.toLocaleString()}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td colSpan="3" className="py-3 px-4 text-right text-gray-400">Tax (5%)</td>
-                                                    <td className="py-3 px-4 text-right text-gray-300">৳ {viewingSaleDetails.sale.tax_amount.toLocaleString()}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td colSpan="3" className="py-3 px-4 text-right font-bold text-white">Grand Total</td>
-                                                    <td className="py-3 px-4 text-right font-bold text-primary-gold text-lg">৳ {viewingSaleDetails.sale.final_amount.toLocaleString()}</td>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
-                                    </div>
+                                <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                    <p className="text-xs text-gray-500 uppercase font-bold mb-1">Method</p>
+                                    <p className="text-white text-sm">{viewingSaleDetails.sale.payment_method}</p>
                                 </div>
-
-                                <div className="modal-footer">
-                                    <button onClick={() => setViewingSaleDetails(null)} className="modal-btn-primary w-full">Close Details</button>
+                                <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                    <p className="text-xs text-gray-500 uppercase font-bold mb-1">Status</p>
+                                    <span className={`inline-block px-2 py-1 rounded text-xs font-bold mt-1 ${viewingSaleDetails.sale.status === 'Completed' ? 'bg-green-500/20 text-green-400' :
+                                        viewingSaleDetails.sale.status === 'Failed' ? 'bg-red-500/20 text-red-400' :
+                                            'bg-yellow-500/20 text-yellow-400'
+                                        }`}>
+                                        {viewingSaleDetails.sale.status}
+                                    </span>
+                                </div>
+                                <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                    <p className="text-xs text-gray-500 uppercase font-bold mb-1">Total</p>
+                                    <p className="text-primary-gold font-bold text-lg">৳ {viewingSaleDetails.sale.final_amount.toLocaleString()}</p>
                                 </div>
                             </div>
-                        </div>,
-                        document.body
-                    )}
-                </div>
-            );
+
+                            {/* Items Table */}
+                            <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                                <span className="w-1 h-6 bg-primary-gold rounded-full"></span>
+                                Purchased Items ({viewingSaleDetails.items.length})
+                            </h3>
+                            <div className="overflow-hidden rounded-xl border border-white/10">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-white/5 text-gray-400 uppercase text-xs">
+                                        <tr>
+                                            <th className="py-3 px-4 font-medium">Item</th>
+                                            <th className="py-3 px-4 font-medium text-center">Qty</th>
+                                            <th className="py-3 px-4 font-medium text-right">Price</th>
+                                            <th className="py-3 px-4 font-medium text-right">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/5">
+                                        {viewLoading && viewingSaleDetails.items.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="4" className="py-8 text-center text-gray-500">
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <div className="w-6 h-6 border-2 border-primary-gold border-t-transparent rounded-full animate-spin"></div>
+                                                        <span>Loading items...</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ) : viewingSaleDetails.items.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="4" className="py-8 text-center text-gray-500">No items found for this sale.</td>
+                                            </tr>
+                                        ) : (
+                                            viewingSaleDetails.items.map((item, index) => (
+                                                <tr key={index} className="hover:bg-white/5 transition-colors">
+                                                    <td className="py-3 px-4">
+                                                        <div className="flex items-center gap-3">
+                                                            {item.image_url ? (
+                                                                <div className="w-10 h-10 rounded-lg bg-black/40 overflow-hidden flex-shrink-0">
+                                                                    <img src={item.image_url} alt="" className="w-full h-full object-cover" />
+                                                                </div>
+                                                            ) : (
+                                                                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-lg flex-shrink-0">💎</div>
+                                                            )}
+                                                            <div>
+                                                                <p className="text-white font-medium">{item.product_name}</p>
+                                                                <p className="text-xs text-gray-500">{item.product_code}</p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 px-4 text-center text-gray-300">x{item.quantity}</td>
+                                                    <td className="py-3 px-4 text-right text-gray-300">৳ {item.price_at_sale.toLocaleString()}</td>
+                                                    <td className="py-3 px-4 text-right text-white font-bold">৳ {item.total_price.toLocaleString()}</td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                    <tfoot className="bg-white/5 border-t border-white/10">
+                                        <tr>
+                                            <td colSpan="3" className="py-3 px-4 text-right text-gray-400">Subtotal</td>
+                                            <td className="py-3 px-4 text-right text-gray-300">৳ {viewingSaleDetails.sale.total_amount.toLocaleString()}</td>
+                                        </tr>
+                                        <tr>
+                                            <td colSpan="3" className="py-3 px-4 text-right text-gray-400">Tax (5%)</td>
+                                            <td className="py-3 px-4 text-right text-gray-300">৳ {viewingSaleDetails.sale.tax_amount.toLocaleString()}</td>
+                                        </tr>
+                                        <tr>
+                                            <td colSpan="3" className="py-3 px-4 text-right font-bold text-white">Grand Total</td>
+                                            <td className="py-3 px-4 text-right font-bold text-primary-gold text-lg">৳ {viewingSaleDetails.sale.final_amount.toLocaleString()}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div className="modal-footer">
+                            <button onClick={() => setViewingSaleDetails(null)} className="modal-btn-primary w-full">Close Details</button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+        </div>
+    );
 };
 
-            export default Sales;
+export default Sales;

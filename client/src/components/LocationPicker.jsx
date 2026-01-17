@@ -28,21 +28,39 @@ const LocationPicker = ({ value, onLocationSelect }) => {
     const containerRef = useRef(null);
     const mapRef = useRef(null);
     const markerRef = useRef(null);
+    const userMarkerRef = useRef(null);
     const clickListenerRef = useRef(null);
     const [status, setStatus] = useState('loading');
     const onSelectRef = useRef(onLocationSelect);
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    const [currentLocation, setCurrentLocation] = useState(null);
 
     useEffect(() => {
         onSelectRef.current = onLocationSelect;
     }, [onLocationSelect]);
 
     useEffect(() => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    setCurrentLocation({
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    });
+                },
+                (error) => {
+                    console.log("Error getting location", error);
+                }
+            );
+        }
+    }, []);
+
+    useEffect(() => {
         let isActive = true;
 
         if (!apiKey) {
             setStatus('missing-key');
-            return () => {};
+            return () => { };
         }
 
         loadGoogleMaps(apiKey)
@@ -52,19 +70,38 @@ const LocationPicker = ({ value, onLocationSelect }) => {
                 }
                 if (!mapRef.current) {
                     const center = value ? { lat: value.lat, lng: value.lng } : DEFAULT_CENTER;
+
                     mapRef.current = new window.google.maps.Map(containerRef.current, {
                         center,
                         zoom: DEFAULT_ZOOM,
                         clickableIcons: false,
                         mapTypeControl: false,
                         fullscreenControl: false,
-                        streetViewControl: false
+                        streetViewControl: false,
+                        styles: [
+                            { "elementType": "geometry", "stylers": [{ "color": "#242f3e" }] },
+                            { "elementType": "labels.text.stroke", "stylers": [{ "color": "#242f3e" }] },
+                            { "elementType": "labels.text.fill", "stylers": [{ "color": "#746855" }] },
+                            { "featureType": "administrative.locality", "elementType": "labels.text.fill", "stylers": [{ "color": "#d59563" }] },
+                            { "featureType": "poi", "elementType": "labels.text.fill", "stylers": [{ "color": "#d59563" }] },
+                            { "featureType": "poi.park", "elementType": "geometry", "stylers": [{ "color": "#263c3f" }] },
+                            { "featureType": "poi.park", "elementType": "labels.text.fill", "stylers": [{ "color": "#6b9a76" }] },
+                            { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#38414e" }] },
+                            { "featureType": "road", "elementType": "geometry.stroke", "stylers": [{ "color": "#212a37" }] },
+                            { "featureType": "road", "elementType": "labels.text.fill", "stylers": [{ "color": "#9ca5b3" }] },
+                            { "featureType": "road.highway", "elementType": "geometry", "stylers": [{ "color": "#746855" }] },
+                            { "featureType": "road.highway", "elementType": "geometry.stroke", "stylers": [{ "color": "#1f2835" }] },
+                            { "featureType": "road.highway", "elementType": "labels.text.fill", "stylers": [{ "color": "#f3d19c" }] },
+                            { "featureType": "transit", "elementType": "geometry", "stylers": [{ "color": "#2f3948" }] },
+                            { "featureType": "transit.station", "elementType": "labels.text.fill", "stylers": [{ "color": "#d59563" }] },
+                            { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#17263c" }] },
+                            { "featureType": "water", "elementType": "labels.text.fill", "stylers": [{ "color": "#515c6d" }] },
+                            { "featureType": "water", "elementType": "labels.text.stroke", "stylers": [{ "color": "#17263c" }] }
+                        ]
                     });
 
                     clickListenerRef.current = mapRef.current.addListener('click', (event) => {
-                        if (!event.latLng) {
-                            return;
-                        }
+                        if (!event.latLng) return;
                         const coords = { lat: event.latLng.lat(), lng: event.latLng.lng() };
                         if (markerRef.current) {
                             markerRef.current.setPosition(coords);
@@ -86,6 +123,7 @@ const LocationPicker = ({ value, onLocationSelect }) => {
                         });
                     }
                 }
+
                 setStatus('ready');
             })
             .catch(() => {
@@ -100,13 +138,44 @@ const LocationPicker = ({ value, onLocationSelect }) => {
                 clickListenerRef.current.remove();
                 clickListenerRef.current = null;
             }
+            if (userMarkerRef.current) {
+                userMarkerRef.current.setMap(null);
+                userMarkerRef.current = null;
+            }
         };
     }, [apiKey]);
 
     useEffect(() => {
-        if (!mapRef.current) {
-            return;
+        if (!mapRef.current || !window.google?.maps) return;
+
+        if (currentLocation) {
+            const userIcon = {
+                path: window.google.maps.SymbolPath.CIRCLE,
+                scale: 7,
+                fillColor: '#3B82F6',
+                fillOpacity: 0.9,
+                strokeColor: '#E5E7EB',
+                strokeWeight: 2
+            };
+            if (!userMarkerRef.current) {
+                userMarkerRef.current = new window.google.maps.Marker({
+                    position: currentLocation,
+                    map: mapRef.current,
+                    icon: userIcon,
+                    title: 'Your location'
+                });
+            } else {
+                userMarkerRef.current.setPosition(currentLocation);
+            }
+
+            if (!value) {
+                mapRef.current.setCenter(currentLocation);
+            }
         }
+    }, [currentLocation, value]);
+
+    useEffect(() => {
+        if (!mapRef.current || !window.google?.maps) return;
 
         if (!value) {
             if (markerRef.current) {
@@ -129,8 +198,27 @@ const LocationPicker = ({ value, onLocationSelect }) => {
     }, [value]);
 
     return (
-        <div className="h-full w-full relative">
+        <div className="h-full w-full relative rounded-2xl overflow-hidden border border-gray-700 shadow-inner">
             <div ref={containerRef} className="h-full w-full" />
+
+            {/* Coordinate Overlay */}
+            <div className="absolute bottom-4 left-4 z-10 bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-lg border border-white/10 shadow-lg text-xs font-mono space-y-1">
+                {value ? (
+                    <>
+                        <div className="flex items-center gap-2">
+                            <span className="text-primary-gold font-bold">LAT:</span>
+                            <span>{value.lat.toFixed(6)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-primary-gold font-bold">LNG:</span>
+                            <span>{value.lng.toFixed(6)}</span>
+                        </div>
+                    </>
+                ) : (
+                    <span className="text-gray-400 italic">Click on map to select location</span>
+                )}
+            </div>
+
             {status === 'loading' && (
                 <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-300 bg-black/40">
                     Loading map...
