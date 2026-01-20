@@ -104,14 +104,27 @@ const Profile = () => {
     const fetchUserProfile = async () => {
         try {
             const shopownerId = localStorage.getItem('shopownerId');
-            const res = await fetch(`/api/user-profile?shopownerId=${shopownerId}`);
+            const userId = localStorage.getItem('userId');
+
+            // Build query to support both shopownerId and userId (covers admin + Google login cases)
+            const queryParam = shopownerId ? `shopownerId=${shopownerId}` : userId ? `userId=${userId}` : '';
+            if (!queryParam) {
+                setUser(null);
+                return;
+            }
+
+            const res = await fetch(`/api/user-profile?${queryParam}`);
             if (res.ok) {
                 const data = await res.json();
                 setUser(data);
                 setEditForm(data);
+            } else {
+                console.error('Failed to load profile', res.status);
+                setUser(null);
             }
         } catch (err) {
             console.error("Error fetching profile:", err);
+            setUser(null);
         } finally {
             setLoading(false);
         }

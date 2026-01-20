@@ -45,7 +45,8 @@ const SignIn = () => {
 
         if (formData.identifier === 'admin' && formData.password === 'admin') {
             localStorage.setItem('shopowner_auth', 'true');
-            localStorage.setItem('userId', '1'); // Mock ID for admin
+            localStorage.setItem('userId', '1');
+            localStorage.setItem('shopownerId', 'SP-001'); // Correctly set admin ID
             navigate('/shopowner/dashboard');
             return;
         }
@@ -56,7 +57,16 @@ const SignIn = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ identifier: formData.identifier, password: formData.password })
             });
-            const result = await response.json();
+
+            const text = await response.text();
+            let result;
+            try {
+                result = JSON.parse(text);
+            } catch (jsonError) {
+                console.error("Failed to parse JSON:", text);
+                throw new Error(text.substring(0, 50) || "Server Error (Non-JSON response)");
+            }
+
             if (response.ok) {
                 localStorage.setItem('shopowner_auth', 'true');
                 localStorage.setItem('userId', result.user.id); // Store actual user ID
@@ -67,7 +77,7 @@ const SignIn = () => {
             }
         } catch (e) {
             console.error(e);
-            setFormError("Login Error");
+            setFormError(e.message || "Login Error");
         }
     };
 
