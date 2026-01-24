@@ -65,11 +65,22 @@ const Subscription = () => {
                 return;
             }
 
+            console.log("Subscription: User object:", user);
+            const shopownerIdToSend = user.shopowner_id || user.user?.shopowner_id;
+            console.log("Subscription: Sending shopownerId:", shopownerIdToSend);
+
+            if (!shopownerIdToSend) {
+                alert(`Error: Shop Owner ID is missing. User: ${JSON.stringify(user)}`);
+                console.error("Missing shopownerId. User dump:", user);
+                setLoading(false);
+                return;
+            }
+
             const response = await fetch('/api/subscription/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId: user.id || user.user?.id, // Handle nested user object if structure varies
+                    shopownerId: user.shopowner_id || user.user?.shopowner_id, // Ensure we pass the Shop Owner ID
                     plan: plan.id,
                     amount: plan.id === 'free' ? 0 : parseInt(plan.price.replace(/[^\d]/g, ''), 10)
                 }),

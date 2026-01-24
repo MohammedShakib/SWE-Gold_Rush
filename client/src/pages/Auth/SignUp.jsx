@@ -217,9 +217,9 @@ const SignUp = () => {
                 ))}
             </div>
 
-            <div className="w-full max-w-[1400px] h-[850px] bg-white rounded-[40px] shadow-[0_0_90px_-10px_rgba(239,182,34,0.4)] flex relative overflow-hidden ring-1 ring-primary-gold/30 mx-auto">
-                <div className="w-full lg:w-[45%] p-12 lg:p-16 flex flex-col justify-center relative z-10 bg-white">
-                    <div className="max-w-md mx-auto w-full space-y-8">
+            <div className="w-full max-w-[1280px] h-[760px] bg-white rounded-[40px] shadow-[0_0_90px_-10px_rgba(239,182,34,0.4)] flex relative overflow-hidden ring-1 ring-primary-gold/30 mx-auto">
+                <div className="w-full lg:w-[45%] p-10 lg:p-14 flex flex-col justify-center relative z-10 bg-white">
+                    <div className="max-w-md mx-auto w-full space-y-6">
                         <div className="mb-4">
                             <Link to="/" className="inline-flex items-center gap-4 group">
                                 <img src={goldRushBg} alt="Gold Rush" className="h-12 w-auto object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.18)] rounded-lg" />
@@ -230,15 +230,15 @@ const SignUp = () => {
                         </div>
 
                         <div className="space-y-2">
-                            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 tracking-tight animate-fade-in-up">
+                            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 tracking-tight animate-fade-in-up">
                                 {step === 1 ? t.signUpTitle : t.shopDetailsTitle}
                             </h2>
-                            <p className="text-gray-500 font-medium text-lg animate-fade-in-up stagger-delay-1">
+                            <p className="text-gray-500 font-medium text-base animate-fade-in-up stagger-delay-1">
                                 {step === 1 ? t.signUpSubtitle : t.shopDetailsSubtitle}
                             </p>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in-up stagger-delay-2" autoComplete="off">
+                        <form onSubmit={handleSubmit} className="space-y-5 animate-fade-in-up stagger-delay-2" autoComplete="off">
                             {formError && (
                                 <div className="rounded-2xl border border-red-200/70 bg-red-50/90 text-red-800 px-4 py-3 text-sm font-semibold shadow-sm shadow-red-900/10">
                                     {formError}
@@ -246,13 +246,13 @@ const SignUp = () => {
                             )}
 
                             {step === 1 && (
-                                <div className="space-y-5">
+                                <div className="space-y-4">
                                     <div className="group">
                                         <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1 mb-2 block">{t.fullNamePlaceholder}</label>
                                         <input
                                             type="text"
                                             placeholder="e.g. Michal"
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-gold/50 focus:bg-white focus:ring-4 focus:ring-primary-gold/5 transition-all font-medium text-base hover:border-gray-300"
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-gold/50 focus:bg-white focus:ring-4 focus:ring-primary-gold/5 transition-all font-medium text-base hover:border-gray-300"
                                             value={formData.fullName}
                                             onChange={handleChange('fullName')}
                                         />
@@ -262,7 +262,7 @@ const SignUp = () => {
                                         <input
                                             type="tel"
                                             placeholder="e.g. 0170000000"
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-gold/50 focus:bg-white focus:ring-4 focus:ring-primary-gold/5 transition-all font-medium text-base hover:border-gray-300"
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-gold/50 focus:bg-white focus:ring-4 focus:ring-primary-gold/5 transition-all font-medium text-base hover:border-gray-300"
                                             value={formData.phone}
                                             onChange={handleChange('phone')}
                                         />
@@ -272,7 +272,7 @@ const SignUp = () => {
                                         <input
                                             type="text"
                                             placeholder="name@example.com"
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-gold/50 focus:bg-white focus:ring-4 focus:ring-primary-gold/5 transition-all font-medium text-base hover:border-gray-300"
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-gold/50 focus:bg-white focus:ring-4 focus:ring-primary-gold/5 transition-all font-medium text-base hover:border-gray-300"
                                             value={formData.identifier}
                                             onChange={handleChange('identifier')}
                                             autoComplete="off"
@@ -283,7 +283,7 @@ const SignUp = () => {
                                         <input
                                             type="password"
                                             placeholder="••••••••"
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-gold/50 focus:bg-white focus:ring-4 focus:ring-primary-gold/5 transition-all font-medium text-base hover:border-gray-300"
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-gold/50 focus:bg-white focus:ring-4 focus:ring-primary-gold/5 transition-all font-medium text-base hover:border-gray-300"
                                             value={formData.password}
                                             onChange={handleChange('password')}
                                         />
@@ -293,7 +293,7 @@ const SignUp = () => {
                                         <input
                                             type="password"
                                             placeholder="••••••••"
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-gold/50 focus:bg-white focus:ring-4 focus:ring-primary-gold/5 transition-all font-medium text-base hover:border-gray-300"
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-gold/50 focus:bg-white focus:ring-4 focus:ring-primary-gold/5 transition-all font-medium text-base hover:border-gray-300"
                                             value={formData.confirmPassword}
                                             onChange={handleChange('confirmPassword')}
                                         />
@@ -302,13 +302,13 @@ const SignUp = () => {
                             )}
 
                             {step === 2 && (
-                                <div className="space-y-5">
+                                <div className="space-y-4">
                                     <div className="group">
                                         <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1 mb-2 block">{t.shopNamePlaceholder}</label>
                                         <input
                                             type="text"
                                             placeholder="e.g. City Gold House"
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-gold/50 focus:bg-white focus:ring-4 focus:ring-primary-gold/5 transition-all font-medium text-base hover:border-gray-300"
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-gold/50 focus:bg-white focus:ring-4 focus:ring-primary-gold/5 transition-all font-medium text-base hover:border-gray-300"
                                             value={formData.shop_name}
                                             onChange={handleChange('shop_name')}
                                         />
@@ -320,7 +320,7 @@ const SignUp = () => {
                                                 type="number"
                                                 placeholder="1"
                                                 min="1"
-                                                className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-gold/50 focus:bg-white focus:ring-4 focus:ring-primary-gold/5 transition-all font-medium text-base hover:border-gray-300"
+                                                className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-gold/50 focus:bg-white focus:ring-4 focus:ring-primary-gold/5 transition-all font-medium text-base hover:border-gray-300"
                                                 value={formData.branch_count}
                                                 onChange={handleChange('branch_count')}
                                             />
@@ -330,7 +330,7 @@ const SignUp = () => {
                                             <input
                                                 type="text"
                                                 placeholder="BIN-1234"
-                                                className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-gold/50 focus:bg-white focus:ring-4 focus:ring-primary-gold/5 transition-all font-medium text-base hover:border-gray-300 uppercase tracking-wide"
+                                                className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-gold/50 focus:bg-white focus:ring-4 focus:ring-primary-gold/5 transition-all font-medium text-base hover:border-gray-300 uppercase tracking-wide"
                                                 value={formData.tax_id}
                                                 onChange={handleChange('tax_id')}
                                             />
@@ -339,16 +339,16 @@ const SignUp = () => {
                                 </div>
                             )}
 
-                            <div className="pt-6 flex gap-4">
+                            <div className="pt-5 flex gap-4">
                                 {step === 2 && (
-                                    <button type="button" onClick={handleBack} className="px-8 py-4 bg-gray-50 hover:bg-gray-100 text-gray-900 font-bold rounded-2xl transition-all duration-300 border border-gray-200">
+                                    <button type="button" onClick={handleBack} className="px-6 py-3.5 bg-gray-50 hover:bg-gray-100 text-gray-900 font-bold rounded-2xl transition-all duration-300 border border-gray-200">
                                         {t.back}
                                     </button>
                                 )}
                                 <button
                                     type="submit"
                                     disabled={step === 1 && !isStep1Complete}
-                                    className="flex-1 w-full bg-[#007AFF] hover:bg-[#0063D1] text-white font-bold text-lg py-4 rounded-2xl shadow-lg shadow-blue-500/20 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none"
+                                    className="flex-1 w-full bg-[#007AFF] hover:bg-[#0063D1] text-white font-bold text-base py-3.5 rounded-2xl shadow-lg shadow-blue-500/20 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none"
                                     style={{ backgroundColor: '#EFB622', boxShadow: '0 4px 20px rgba(239, 182, 34, 0.25)' }}
                                 >
                                     {step === 1 ? t.next : t.signUp}

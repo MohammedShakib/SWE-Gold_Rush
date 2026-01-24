@@ -9,11 +9,13 @@ require('dotenv').config();
 const app = express();
 
 // Adjust these based on your actual Firebase Project ID
-const PROJECT_ID = "gold-rush-web"; // Derived from previous file or .firebaserc
-const REGION = "us-central1";
-const FUNCTION_NAME = "api";
-const BASE_API_URL = `https://${REGION}-${PROJECT_ID}.cloudfunctions.net/${FUNCTION_NAME}`;
-const FRONTEND_URL = `https://${PROJECT_ID}.web.app`; // or .firebaseapp.com
+const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || process.env.PROJECT_ID;
+const REGION = process.env.FUNCTION_REGION || process.env.GCLOUD_REGION || "us-central1";
+const FUNCTION_NAME = process.env.FUNCTION_NAME || "api";
+const BASE_API_URL = process.env.API_BASE_URL
+    || (PROJECT_ID ? `https://${REGION}-${PROJECT_ID}.cloudfunctions.net/${FUNCTION_NAME}` : "");
+const FRONTEND_URL = process.env.CLIENT_URL
+    || (PROJECT_ID ? `https://${PROJECT_ID}.web.app` : "");
 
 app.use(cors({ origin: true }));
 app.use(express.json());

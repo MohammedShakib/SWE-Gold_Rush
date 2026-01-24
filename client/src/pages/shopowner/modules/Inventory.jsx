@@ -44,6 +44,7 @@ const Inventory = () => {
 
     // Search State
     const [searchQuery, setSearchQuery] = useState('');
+    const LOW_STOCK_THRESHOLD = 3;
 
     // Filtered Products
     const filteredProducts = products.filter(product => {
@@ -54,6 +55,9 @@ const Inventory = () => {
             (product.category && product.category.toLowerCase().includes(query))
         );
     });
+    const lowStockCount = products.filter((product) => (
+        product.status === 'Low Stock' || Number(product.stock_quantity) < LOW_STOCK_THRESHOLD
+    )).length;
 
     const fetchProducts = async () => {
         try {
@@ -334,7 +338,7 @@ const Inventory = () => {
                 </div>
                 <div className="bg-[#121418] p-6 rounded-2xl border border-white/5">
                     <p className="text-gray-400 text-sm">Low Stock Alerts</p>
-                    <p className="text-2xl font-bold text-red-400 mt-1">{products.filter(p => p.stock_quantity < 3).length} Items</p>
+                    <p className="text-2xl font-bold text-red-400 mt-1">{lowStockCount} Items</p>
                 </div>
             </div>
 

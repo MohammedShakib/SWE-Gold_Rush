@@ -299,7 +299,13 @@ const Profile = () => {
                             <div className="pt-4 border-t border-white/10 space-y-3">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-500 flex items-center gap-2"><Calendar size={14} /> Next Billing</span>
-                                    <span className="text-white">Jan 30, 2026</span>
+                                    <span className="text-white">
+                                        {user.subscription_plan === 'lifetime'
+                                            ? 'Never'
+                                            : user.subscription_end_date
+                                                ? new Date(user.subscription_end_date).toLocaleDateString()
+                                                : 'N/A'}
+                                    </span>
                                 </div>
                                 <button
                                     onClick={() => setShowSubscriptionModal(true)}

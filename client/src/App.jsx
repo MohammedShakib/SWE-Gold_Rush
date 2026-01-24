@@ -19,6 +19,8 @@ import AdminControl from './pages/shopowner/modules/AdminControl';
 import AIPrediction from './pages/shopowner/modules/AIPrediction';
 import Profile from './pages/shopowner/modules/Profile';
 
+import SuperAdminDashboard from './pages/SuperAdmin/SuperAdminDashboard';
+
 function App() {
     return (
         <LanguageProvider>
@@ -39,6 +41,7 @@ function App() {
 
                     {/* Shop Owner Routes */}
                     {/* <Route path="/shopowner/login" element={<ShopOwnerSignIn />} /> - DEPRECATED */}
+                    <Route path="/superadmin" element={<SuperAdminDashboard />} />
                     <Route path="/shopowner" element={<DashboardLayout />}>
                         <Route path="dashboard" element={<DashboardHome />} />
                         <Route path="profile" element={<Profile />} />
