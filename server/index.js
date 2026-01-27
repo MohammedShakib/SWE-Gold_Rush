@@ -3,6 +3,9 @@ const cors = require('cors');
 const { sql, connectDB } = require('./db');
 const SSLCommerzPayment = require('sslcommerz-lts');
 const { v4: uuidv4 } = require('uuid');
+const axios = require('axios');
+const { sendEmail } = require('./emailService');
+
 
 const app = express();
 const PORT = 5000;
@@ -232,36 +235,47 @@ connectDB().then(async () => {
 
         console.log("Database schema synchronized (branch columns added).");
 
-        // 2. Demo Data Generation
-        // Check if demo data exists for 'Chittagong Branch' in 'products', if not, seed it.
-        const checkDemoQuery = "SELECT COUNT(*) as count FROM products WHERE branch = 'Chittagong Branch'";
-        const demoResult = await pool.request().query(checkDemoQuery);
+        // 2. Demo Data Generation (idempotent)
+        console.log("Seeding demo data for Chittagong Branch (if missing)...");
 
-        if (demoResult.recordset[0].count === 0) {
-            console.log("Seeding demo data for Chittagong Branch...");
+        // Demo Products
+        await pool.request().query(`
+            IF NOT EXISTS (SELECT 1 FROM products WHERE product_code = 'CTG-NECK-001')
+                UPDATE products
+                SET product_code = 'CTG-NECK-001'
+                WHERE product_code IS NULL
+                  AND name = 'Chittagong Gold Necklace'
+                  AND branch = 'Chittagong Branch';
 
-            // Demo Products
-            await pool.request().query(`
-                INSERT INTO products (name, category, karat, weight, price, stock_quantity, image_url, branch, status)
-                VALUES 
-                ('Chittagong Gold Necklace', 'Necklace', '22K', 12.5, 120000, 5, 'https://placehold.co/400', 'Chittagong Branch', 'In Stock'),
-                ('Agrabad Special Ring', 'Ring', '21K', 5.0, 45000, 10, 'https://placehold.co/400', 'Chittagong Branch', 'In Stock');
-            `);
+            IF NOT EXISTS (SELECT 1 FROM products WHERE product_code = 'CTG-RING-001')
+                UPDATE products
+                SET product_code = 'CTG-RING-001'
+                WHERE product_code IS NULL
+                  AND name = 'Agrabad Special Ring'
+                  AND branch = 'Chittagong Branch';
 
-            // Demo Repairs
-            await pool.request().query(`
+            IF NOT EXISTS (SELECT 1 FROM products WHERE product_code = 'CTG-NECK-001')
+                INSERT INTO products (product_code, name, category, karat, weight, price, stock_quantity, image_url, branch, status)
+                VALUES ('CTG-NECK-001', 'Chittagong Gold Necklace', 'Necklace', '22K', 12.5, 120000, 5, 'https://placehold.co/400', 'Chittagong Branch', 'In Stock');
+
+            IF NOT EXISTS (SELECT 1 FROM products WHERE product_code = 'CTG-RING-001')
+                INSERT INTO products (product_code, name, category, karat, weight, price, stock_quantity, image_url, branch, status)
+                VALUES ('CTG-RING-001', 'Agrabad Special Ring', 'Ring', '21K', 5.0, 45000, 10, 'https://placehold.co/400', 'Chittagong Branch', 'In Stock');
+        `);
+
+        // Demo Repairs
+        await pool.request().query(`
+            IF NOT EXISTS (SELECT 1 FROM repair_tickets WHERE ticket_id = 'REP-CTG-001')
                 INSERT INTO repair_tickets (ticket_id, customer_name, customer_phone, item_name, issue_description, estimated_cost, branch, status)
-                VALUES 
-                ('REP-CTG-001', 'Karim Ullah', '01812345678', 'Broken Chain', 'Soldering needed', 500, 'Chittagong Branch', 'Active');
-            `);
+                VALUES ('REP-CTG-001', 'Karim Ullah', '01812345678', 'Broken Chain', 'Soldering needed', 500, 'Chittagong Branch', 'Active');
+        `);
 
-            // Demo Sales
-            await pool.request().query(`
+        // Demo Sales
+        await pool.request().query(`
+            IF NOT EXISTS (SELECT 1 FROM sales WHERE transaction_id = 'TXN-CTG-101')
                 INSERT INTO sales (total_amount, tax_amount, final_amount, payment_method, transaction_id, status, branch)
-                VALUES 
-                (120000, 6000, 126000, 'Cash', 'TXN-CTG-101', 'Completed', 'Chittagong Branch');
-            `);
-        }
+                VALUES (120000, 6000, 126000, 'Cash', 'TXN-CTG-101', 'Completed', 'Chittagong Branch');
+        `);
 
     } catch (err) {
         console.error("Schema initialization failed:", err);
@@ -532,6 +546,43 @@ const mockBlogPosts = [
 app.get('/api/blog', (req, res) => {
     res.json(mockBlogPosts);
 });
+
+// GET /api/gold-forecast
+app.get('/api/gold-forecast', async (req, res) => {
+    try {
+        const response = await axios.get('https://gold-forecast-api.onrender.com/predict');
+        res.json(response.data);
+    } catch (error) {
+        console.error("Error fetching gold forecast:", error.message);
+        res.status(500).json({ error: "Failed to fetch gold forecast" });
+    }
+});
+
+// POST /api/crm/send-email
+app.post('/api/crm/send-email', async (req, res) => {
+    const { recipients, subject, message } = req.body;
+
+    if (!recipients || !subject || !message) {
+        return res.status(400).json({ error: "Recipients, subject, and message are required" });
+    }
+
+    // In a real scenario, you might loop through recipients or use BCC
+    // For this implementation, we will assume 'recipients' is an array of strings (emails)
+    // or a single string (if just one).
+
+    // If user sends "All VIP Customers", frontend should resolve that to a list of emails
+    // But to keep it simple, let's assume the frontend sends the *actual* email addresses.
+
+    try {
+        const to = Array.isArray(recipients) ? recipients.join(',') : recipients;
+        await sendEmail(to, subject, message); // message can be HTML
+        res.json({ message: "Email sent successfully" });
+    } catch (error) {
+        console.error("Error sending email:", error);
+        res.status(500).json({ error: "Failed to send email. Check server logs." });
+    }
+});
+
 
 // POST /api/contact
 app.post('/api/contact', (req, res) => {
