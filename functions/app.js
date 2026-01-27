@@ -10,6 +10,45 @@ const PORT = 5000;
 app.use(cors());
 app.use(express.json());
 
+const normalizeUrlValue = (value) => {
+    if (!value) return null;
+    const text = String(value).trim();
+    if (!text || text === 'null' || text === 'undefined') return null;
+    return text.replace(/\/+$/, '');
+};
+
+const normalizeTranId = (value) => {
+    if (!value) return null;
+    const text = String(value).trim();
+    if (!text || text === 'null' || text === 'undefined') return null;
+    return text;
+};
+
+const getApiBaseUrl = (req) => normalizeUrlValue(process.env.API_BASE_URL) || `${req.protocol}://${req.get('host')}`;
+const getClientUrl = (req) =>
+    normalizeUrlValue(process.env.CLIENT_URL) ||
+    normalizeUrlValue(req.get('origin')) ||
+    normalizeUrlValue(req.get('referer')) ||
+    `${req.protocol}://${req.get('host')}`;
+
+const getRedirectBase = (req) =>
+    normalizeUrlValue(process.env.CLIENT_URL) ||
+    normalizeUrlValue(req.query?.redirect) ||
+    normalizeUrlValue(req.get('origin')) ||
+    normalizeUrlValue(req.get('referer')) ||
+    `${req.protocol}://${req.get('host')}`;
+
+const buildRedirectUrl = (req, path) => {
+    const base = getRedirectBase(req);
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    return `${base}${normalizedPath}`;
+};
+
+const getTranId = (req) =>
+    normalizeTranId(req.params?.tran_id) ||
+    normalizeTranId(req.body?.tran_id) ||
+    normalizeTranId(req.query?.tran_id);
+
 const applyStockDeduction = async (pool, items) => {
     for (const item of items) {
         const productId = item.product_id ?? item.id;
@@ -34,15 +73,6 @@ const applyStockDeduction = async (pool, items) => {
     }
 };
 
-// Resolve URLs from env or request context
-const getApiBaseUrl = (req) => process.env.API_BASE_URL || `${req.protocol}://${req.get('host')}`;
-const getClientUrl = (req) => process.env.CLIENT_URL || req.get('origin') || `${req.protocol}://${req.get('host')}`;
-
-const runtimeLabel = process.env.NODE_ENV || 'development';
-console.log(`Running in ${runtimeLabel.toUpperCase()} mode`);
-console.log(`API_BASE_URL: ${process.env.API_BASE_URL || '(auto from request)'}`);
-console.log(`CLIENT_URL: ${process.env.CLIENT_URL || '(auto from request/origin)'}`);
-
 // Connect to Database
 // Connect to Database
 // ... (imports remain same)
@@ -50,7 +80,6 @@ console.log(`CLIENT_URL: ${process.env.CLIENT_URL || '(auto from request/origin)
 // Connect to Database
 connectDB().then(async () => {
     try {
-        console.log("Starting Schema Initialization...");
         const pool = await sql.connect();
 
         // 1. Schema Initialization (Tables + Branch Column)
@@ -352,10 +381,11 @@ app.post('/api/repairs', async (req, res) => {
         const pool = await sql.connect();
 
         const ticket_id = `REP-${Date.now()}`;
+        // Map due_date to delivery_date as per schema
         const insertQuery = `
-            INSERT INTO repair_tickets (ticket_id, customer_name, customer_phone, item_name, issue_description, estimated_cost, delivery_date, branch, shopowner_id)
+            INSERT INTO repair_tickets (ticket_id, customer_name, customer_phone, item_name, issue_description, estimated_cost, delivery_date, branch, shopowner_id, status)
             OUTPUT INSERTED.*
-            VALUES (@ticket_id, @customer_name, @customer_phone, @item_name, @issue_description, @estimated_cost, @delivery_date, @branch, @shopowner_id)
+            VALUES (@ticket_id, @customer_name, @customer_phone, @item_name, @issue_description, @estimated_cost, @delivery_date, @branch, @shopowner_id, 'Active')
         `;
 
         await pool.request()
@@ -372,6 +402,64 @@ app.post('/api/repairs', async (req, res) => {
         res.status(201).json({ message: "Repair ticket created" });
     } catch (err) {
         console.error("Error creating repair ticket:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// PUT /api/repairs/:id
+app.put('/api/repairs/:id', async (req, res) => {
+    const { id } = req.params;
+    const { status, estimated_cost, delivery_date } = req.body;
+
+    try {
+        const pool = await sql.connect();
+        let query = 'UPDATE repair_tickets SET ';
+        const updates = [];
+
+        if (status) updates.push("status = @status");
+        if (estimated_cost) updates.push("estimated_cost = @estimated_cost");
+        if (delivery_date) updates.push("delivery_date = @delivery_date");
+
+        if (updates.length === 0) return res.status(400).json({ error: "No fields to update" });
+
+        query += updates.join(", ");
+        query += " OUTPUT INSERTED.* WHERE id = @id";
+
+        const request = pool.request().input('id', sql.Int, id);
+
+        if (status) request.input('status', sql.NVarChar, status);
+        if (estimated_cost) request.input('estimated_cost', sql.Decimal(18, 2), estimated_cost);
+        if (delivery_date) request.input('delivery_date', sql.DateTime, delivery_date);
+
+        const result = await request.query(query);
+
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: "Ticket not found" });
+        }
+
+        res.json(result.recordset[0]);
+    } catch (err) {
+        console.error("Error updating repair ticket:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// DELETE /api/repairs/:id
+app.delete('/api/repairs/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const pool = await sql.connect();
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query('DELETE FROM repair_tickets WHERE id = @id');
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: "Ticket not found" });
+        }
+
+        res.json({ message: "Ticket deleted successfully" });
+    } catch (err) {
+        console.error("Error deleting repair ticket:", err);
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
@@ -458,6 +546,9 @@ app.post('/api/contact', (req, res) => {
     res.json({ message: "Query received successfully and logged on the server." });
 });
 
+
+
+
 // POST /api/auth/signup
 app.post('/api/auth/signup', async (req, res) => {
     const { fullName, phone, identifier, password, latitude, longitude, shop_name, branch_count, tax_id } = req.body;
@@ -472,45 +563,6 @@ app.post('/api/auth/signup', async (req, res) => {
 
     try {
         const pool = await sql.connect(); // Ensure we have a connection
-
-        // Create table if not exists (T-SQL)
-        const createTableQuery = `
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='shopowners' AND xtype='U')
-            CREATE TABLE shopowners (
-                id INT IDENTITY(1,1) PRIMARY KEY,
-                full_name NVARCHAR(255) NOT NULL,
-                phone NVARCHAR(50),
-                identifier NVARCHAR(255) UNIQUE NOT NULL,
-                password NVARCHAR(255) NOT NULL, -- Note: Should be hashed in production
-                latitude FLOAT NULL,
-                longitude FLOAT NULL,
-                created_at DATETIME DEFAULT GETDATE()
-            );
-        `;
-        await pool.request().query(createTableQuery);
-
-        const addLocationColumnsQuery = `
-            IF COL_LENGTH('shopowners', 'latitude') IS NULL
-                ALTER TABLE shopowners ADD latitude FLOAT NULL;
-            IF COL_LENGTH('shopowners', 'longitude') IS NULL
-                ALTER TABLE shopowners ADD longitude FLOAT NULL;
-            IF COL_LENGTH('shopowners', 'shop_name') IS NULL
-                ALTER TABLE shopowners ADD shop_name NVARCHAR(255) NULL;
-            IF COL_LENGTH('shopowners', 'branch_count') IS NULL
-                ALTER TABLE shopowners ADD branch_count INT DEFAULT 1;
-            IF COL_LENGTH('shopowners', 'tax_id') IS NULL
-                ALTER TABLE shopowners ADD tax_id NVARCHAR(100) NULL;
-            IF COL_LENGTH('shopowners', 'subscription_plan') IS NULL
-                ALTER TABLE shopowners ADD subscription_plan NVARCHAR(50) DEFAULT 'free';
-            IF COL_LENGTH('shopowners', 'subscription_status') IS NULL
-                ALTER TABLE shopowners ADD subscription_status NVARCHAR(50) DEFAULT 'active';
-            IF COL_LENGTH('shopowners', 'subscription_end_date') IS NULL
-                ALTER TABLE shopowners ADD subscription_end_date DATETIME NULL;
-
-            IF COL_LENGTH('shopowners', 'shopowner_id') IS NULL
-                ALTER TABLE shopowners ADD shopowner_id NVARCHAR(50) NULL;
-        `;
-        await pool.request().query(addLocationColumnsQuery);
 
         // Backfill shopowner_id if missing
         await pool.request().query(`
@@ -538,12 +590,10 @@ app.post('/api/auth/signup', async (req, res) => {
             subscriptionStatus = 'pending';
         }
 
-        // Insert new user
+        // Insert new user (WITHOUT OUTPUT clause to avoid trigger conflicts)
         const insertUserQuery = `
             INSERT INTO shopowners (full_name, phone, identifier, password, latitude, longitude, shop_name, branch_count, tax_id, subscription_plan, subscription_status)
             VALUES (@fullName, @phone, @identifier, @password, @latitude, @longitude, @shop_name, @branch_count, @tax_id, @subscription_plan, @subscription_status);
-            
-            SELECT * FROM shopowners WHERE id = SCOPE_IDENTITY();
         `;
 
         const request = pool.request()
@@ -559,9 +609,15 @@ app.post('/api/auth/signup', async (req, res) => {
             .input('subscription_plan', sql.NVarChar, selectedPlan)
             .input('subscription_status', sql.NVarChar, subscriptionStatus);
 
-        const result = await request.query(insertUserQuery);
+        await request.query(insertUserQuery);
 
-        const newUser = result.recordset[0];
+        // Fetch the newly created user
+        const fetchUserQuery = `SELECT * FROM shopowners WHERE identifier = @identifier`;
+        const fetchUserResult = await pool.request()
+            .input('identifier', sql.NVarChar, identifier)
+            .query(fetchUserQuery);
+
+        const newUser = fetchUserResult.recordset[0];
 
         // Generate and Update shopowner_id
         const shopownerId = `SP-${String(newUser.id).padStart(3, '0')}`;
@@ -574,30 +630,25 @@ app.post('/api/auth/signup', async (req, res) => {
         newUser.shopowner_id = shopownerId;
 
         // Create Default Branch for the user
-        const createBranchTableQuery = `
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='branches' AND xtype='U')
-            CREATE TABLE branches (
-                id INT IDENTITY(1,1) PRIMARY KEY,
-                name NVARCHAR(255) NOT NULL,
-                location NVARCHAR(255),
-                status NVARCHAR(50) DEFAULT 'Active',
-                daily_sales DECIMAL(18, 2) DEFAULT 0,
-                stock_value NVARCHAR(50) DEFAULT '0',
-                shopowner_id NVARCHAR(50) NULL,
-                user_id INT NULL,
-                created_at DATETIME DEFAULT GETDATE()
-            );
-        `;
-        await pool.request().query(createBranchTableQuery);
-
         await pool.request()
             .input('name', sql.NVarChar, 'Main Branch')
             .input('location', sql.NVarChar, shop_name + ' Location')
             .input('user_id', sql.Int, newUser.id)
-            .input('shopowner_id', sql.NVarChar, shopownerId)
             .query(`
-                INSERT INTO branches (name, location, status, daily_sales, stock_value, user_id, shopowner_id)
-                VALUES (@name, @location, 'Active', 0, '0', @user_id, @shopowner_id)
+                INSERT INTO branches (name, location, status, daily_sales, stock_value, user_id)
+                VALUES (@name, @location, 'Active', 0, '0', @user_id)
+            `);
+
+        // SYNC: Create Gold Lagbe Shop Profile
+        const shopSlug = (shop_name || fullName).toLowerCase().replace(/ /g, '-') + '-' + newUser.id;
+        await pool.request()
+            .input('shopowner_id', sql.Int, newUser.id)
+            .input('shop_slug', sql.NVarChar, shopSlug)
+            .input('logo_url', sql.NVarChar, 'https://placehold.co/200x200?text=' + (shop_name?.[0] || 'S'))
+            .input('banner_url', sql.NVarChar, 'https://placehold.co/1200x300?text=Shop+Banner')
+            .query(`
+                INSERT INTO GL_ShopProfiles (shopowner_id, shop_slug, logo_url, banner_url, rating, is_verified)
+                VALUES (@shopowner_id, @shop_slug, @logo_url, @banner_url, 5.0, 1)
             `);
 
         let paymentUrl = null;
@@ -606,13 +657,15 @@ app.post('/api/auth/signup', async (req, res) => {
             try {
                 const tran_id = `SUB-${uuidv4()}`;
                 const apiBaseUrl = getApiBaseUrl(req);
+                const clientUrl = getClientUrl(req);
+                const redirectParam = encodeURIComponent(clientUrl);
                 const paymentData = {
                     total_amount: planAmount,
                     currency: 'BDT',
                     tran_id: tran_id,
-                    success_url: `${apiBaseUrl}/api/payment/success/${tran_id}`,
-                    fail_url: `${apiBaseUrl}/api/payment/fail/${tran_id}`,
-                    cancel_url: `${apiBaseUrl}/api/payment/cancel/${tran_id}`,
+                    success_url: `${apiBaseUrl}/api/payment/success/${tran_id}?redirect=${redirectParam}`,
+                    fail_url: `${apiBaseUrl}/api/payment/fail/${tran_id}?redirect=${redirectParam}`,
+                    cancel_url: `${apiBaseUrl}/api/payment/cancel/${tran_id}?redirect=${redirectParam}`,
                     ipn_url: `${apiBaseUrl}/api/payment/ipn`,
                     shipping_method: 'Courier',
                     product_name: `${selectedPlan} Subscription`,
@@ -636,6 +689,15 @@ app.post('/api/auth/signup', async (req, res) => {
                     ship_postcode: 1000,
                     ship_country: 'Bangladesh',
                 };
+
+                await pool.request()
+                    .input('planAmount', sql.Decimal(18, 2), planAmount)
+                    .input('tran_id', sql.NVarChar, tran_id)
+                    .input('shopownerId', sql.NVarChar, shopownerId)
+                    .query(`
+                        INSERT INTO sales (total_amount, tax_amount, final_amount, payment_method, transaction_id, status, branch, shopowner_id)
+                        VALUES (@planAmount, 0, @planAmount, 'Online', @tran_id, 'Pending', 'Subscription', @shopownerId)
+                    `);
 
                 const sslcz = new SSLCommerzPayment(process.env.STORE_ID || 'testbox', process.env.STORE_PASSWORD || 'qwerty', false);
                 const apiResponse = await sslcz.init(paymentData);
@@ -661,20 +723,34 @@ app.post('/api/auth/signup', async (req, res) => {
 
     } catch (err) {
         console.error("Error in signup:", err);
-        res.status(500).json({ error: "Internal Server Error: " + (err.message || err.toString()) });
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
 // Login Endpoint
 app.post('/api/auth/signin', async (req, res) => {
     const { identifier, password } = req.body;
+    console.log(`Login attempt for: ${identifier}`);
 
     if (!identifier || !password) {
         return res.status(400).json({ error: "Email/Phone and Password are required" });
     }
 
+    // Super Admin Check
+    if (identifier === 'sadmin' && password === 'sadmin') {
+        console.log("Super Admin identified. Logging in.");
+        return res.json({
+            message: "Super Admin Login successful",
+            user: {
+                id: 0,
+                full_name: "Super Admin",
+                role: "superadmin"
+            }
+        });
+    }
+
     try {
-        const pool = await sql.connect(); // uses global config from db.js
+        const pool = await sql.connect();
         const result = await pool.request()
             .input('identifier', sql.NVarChar, identifier)
             .query('SELECT * FROM shopowners WHERE identifier = @identifier');
@@ -684,6 +760,10 @@ app.post('/api/auth/signin', async (req, res) => {
         }
 
         const user = result.recordset[0];
+
+        if (user.subscription_status === 'deleted') {
+            return res.status(403).json({ error: "Account has been deleted" });
+        }
 
         // Simple password comparison (User signup uses plain text currently)
         if (user.password !== password) {
@@ -697,6 +777,159 @@ app.post('/api/auth/signin', async (req, res) => {
 
     } catch (err) {
         console.error("Error in signin:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// Super Admin: Get All Users
+app.get('/api/admin/users', async (req, res) => {
+    try {
+        const pool = await sql.connect();
+        const result = await pool.request().query("SELECT * FROM shopowners ORDER BY id DESC");
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error fetching users:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// Super Admin: Update User
+app.put('/api/admin/users/:id', async (req, res) => {
+    const { id } = req.params;
+    const { subscription_plan, subscription_status, subscription_end_date } = req.body;
+
+    try {
+        const pool = await sql.connect();
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .input('plan', sql.NVarChar, subscription_plan)
+            .input('status', sql.NVarChar, subscription_status)
+            .input('end_date', sql.DateTime, subscription_end_date || null)
+            .query(`
+                UPDATE shopowners 
+                SET subscription_plan = @plan, 
+                    subscription_status = @status,
+                    subscription_end_date = @end_date
+                WHERE id = @id
+            `);
+
+        res.json({ message: "User updated successfully" });
+    } catch (err) {
+        console.error("Error updating user:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// Super Admin: Delete User (HARD DELETE - Cleans up all related data)
+app.delete('/api/admin/users/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const pool = await sql.connect();
+
+        // 1. Get Shop Owner details
+        const userRes = await pool.request()
+            .input('id', sql.Int, id)
+            .query("SELECT id, shopowner_id FROM shopowners WHERE id = @id");
+
+        if (userRes.recordset.length === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const user = userRes.recordset[0];
+        const shopownerId = user.shopowner_id;
+        const userId = user.id; // Int ID
+
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        try {
+            const request = new sql.Request(transaction);
+            request.input('id', sql.Int, userId);
+            if (shopownerId) request.input('sid', sql.NVarChar, shopownerId);
+
+            console.log(`Deleting user ${userId} (${shopownerId})...`);
+
+            if (shopownerId) {
+                // --- Level 3: Grandchildren (Delete items linked to sales/orders) ---
+                // Delete Sale Items - KEY FIX: Check both IDs to catch legacy data
+                await request.query(`
+                    DELETE FROM sale_items 
+                    WHERE sale_id IN (
+                        SELECT id FROM sales 
+                        WHERE shopowner_id = @sid OR user_id = @id
+                    )
+                `);
+
+                // Delete Installment Payments
+                await request.query(`
+                    DELETE FROM installment_payments 
+                    WHERE installment_id IN (
+                        SELECT id FROM installments 
+                        WHERE shopowner_id = @sid OR user_id = @id
+                    )
+                `);
+
+                // Delete Repair Orders (linked to Customers)
+                await request.query(`
+                    DELETE FROM repair_orders 
+                    WHERE customer_id IN (SELECT id FROM customers WHERE shopowner_id = @sid)
+                `);
+
+                // --- Level 2: Children (Transactional Data) ---
+                // Delete Sales for BOTH keys
+                await request.query("DELETE FROM sales WHERE shopowner_id = @sid OR user_id = @id");
+
+                // Delete Installments for BOTH keys
+                await request.query("DELETE FROM installments WHERE shopowner_id = @sid OR user_id = @id");
+
+                await request.query("DELETE FROM repair_tickets WHERE shopowner_id = @sid");
+                await request.query("DELETE FROM manufacturing_orders WHERE shopowner_id = @sid");
+                await request.query("DELETE FROM stock_transfers WHERE shopowner_id = @sid");
+
+                // --- Level 2.5: Product Dependents ---
+                await request.query(`
+                    DELETE FROM GL_Cart 
+                    WHERE product_id IN (SELECT id FROM products WHERE shopowner_id = @sid)
+                `);
+                await request.query(`
+                    DELETE FROM GL_Reviews 
+                    WHERE product_id IN (SELECT id FROM products WHERE shopowner_id = @sid)
+                `);
+
+
+                // --- Level 2: Catalog Data ---
+                await request.query("DELETE FROM products WHERE shopowner_id = @sid");
+                await request.query("DELETE FROM customers WHERE shopowner_id = @sid");
+                await request.query("DELETE FROM branches WHERE shopowner_id = @sid");
+            }
+
+            // --- Level 1: integer ID based links ---
+            // GL_Orders uses shopowner_id as INT
+            await request.query(`
+                DELETE FROM GL_OrderItems 
+                WHERE order_id IN (SELECT id FROM GL_Orders WHERE shopowner_id = @id)
+            `);
+            await request.query("DELETE FROM GL_Orders WHERE shopowner_id = @id");
+            await request.query("DELETE FROM GL_ShopProfiles WHERE shopowner_id = @id");
+
+            // Clean up any orphans by user_id if they exist
+            await request.query("DELETE FROM products WHERE user_id = @id");
+            await request.query("DELETE FROM branches WHERE user_id = @id");
+
+            // --- Final: Delete User ---
+            await request.query("DELETE FROM shopowners WHERE id = @id");
+
+            await transaction.commit();
+            console.log("Delete successful.");
+            res.json({ message: "User and all related data permanently deleted." });
+        } catch (err) {
+            console.error("Transaction failed, rolling back.", err);
+            await transaction.rollback();
+            throw err;
+        }
+
+    } catch (err) {
+        console.error("Error deleting user:", err);
         res.status(500).json({ error: "Internal Server Error: " + err.message });
     }
 });
@@ -773,13 +1006,15 @@ app.post('/api/subscription/update', async (req, res) => {
             try {
                 const tran_id = `SUB-${uuidv4()}`;
                 const apiBaseUrl = getApiBaseUrl(req);
+                const clientUrl = getClientUrl(req);
+                const redirectParam = encodeURIComponent(clientUrl);
                 const paymentData = {
                     total_amount: planAmount,
                     currency: 'BDT',
                     tran_id: tran_id,
-                    success_url: `${apiBaseUrl}/api/payment/success/${tran_id}`,
-                    fail_url: `${apiBaseUrl}/api/payment/fail/${tran_id}`,
-                    cancel_url: `${apiBaseUrl}/api/payment/cancel/${tran_id}`,
+                    success_url: `${apiBaseUrl}/api/payment/success/${tran_id}?redirect=${redirectParam}`,
+                    fail_url: `${apiBaseUrl}/api/payment/fail/${tran_id}?redirect=${redirectParam}`,
+                    cancel_url: `${apiBaseUrl}/api/payment/cancel/${tran_id}?redirect=${redirectParam}`,
                     ipn_url: `${apiBaseUrl}/api/payment/ipn`,
                     shipping_method: 'Courier',
                     product_name: `${plan} Subscription`,
@@ -823,11 +1058,6 @@ app.post('/api/subscription/update', async (req, res) => {
                 }
             } catch (paymentError) {
                 console.error("Payment Init Error:", paymentError);
-                return res.status(500).json({ error: "Payment Gateway Error: " + paymentError.message });
-            }
-
-            if (!paymentUrl) {
-                return res.status(500).json({ error: "Failed to initiate payment gateway." });
             }
         }
 
@@ -896,68 +1126,9 @@ app.post('/api/auth/google', async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
-// GET /api/inventory
-app.get('/api/inventory', async (req, res) => {
-    const branch = req.query.branch || 'Main Branch';
-    const { shopownerId } = req.query;
-
-    try {
-        const pool = await sql.connect();
-
-        let query = 'SELECT * FROM products WHERE branch = @branch';
-        const request = pool.request().input('branch', sql.NVarChar, branch);
-
-        if (shopownerId) {
-            query += ' AND shopowner_id = @shopownerId';
-            request.input('shopownerId', sql.NVarChar, shopownerId);
-        }
-
-        query += ' ORDER BY created_at DESC';
-        const result = await request.query(query);
-        res.json(result.recordset);
-    } catch (err) {
-        console.error("Error fetching inventory:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-});
-
-// POST /api/inventory
-app.post('/api/inventory', async (req, res) => {
-    const { name, category, karat, weight, price, stock_quantity, image_url, supplier_id, product_code, branch, shopownerId } = req.body;
-
-    if (!name || !price) {
-        return res.status(400).json({ error: "Name and Price are required" });
-    }
-
-    try {
-        const pool = await sql.connect();
-        const insertQuery = `
-            INSERT INTO products (name, category, karat, weight, price, stock_quantity, image_url, supplier_id, product_code, branch, shopowner_id)
-            OUTPUT INSERTED.*
-            VALUES (@name, @category, @karat, @weight, @price, @stock_quantity, @image_url, @supplier_id, @product_code, @branch, @shopowner_id)
-        `;
-
-        const result = await pool.request()
-            .input('name', sql.NVarChar, name)
-            .input('category', sql.NVarChar, category || null)
-            .input('karat', sql.NVarChar, karat || null)
-            .input('weight', sql.Decimal(10, 2), weight || 0)
-            .input('price', sql.Decimal(18, 2), price)
-            .input('stock_quantity', sql.Int, stock_quantity || 0)
-            .input('image_url', sql.NVarChar, image_url || null)
-            .input('supplier_id', sql.Int, supplier_id || null)
-            .input('product_code', sql.NVarChar, product_code || `P-${Date.now()}`)
-            .input('branch', sql.NVarChar, branch || 'Main Branch')
-            .input('shopowner_id', sql.NVarChar, shopownerId || null)
-            .query(insertQuery);
 
 
-        res.status(201).json(result.recordset[0]);
-    } catch (err) {
-        console.error("Error creating product:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-});
+
 
 // PUT /api/inventory/:id
 app.put('/api/inventory/:id', async (req, res) => {
@@ -1239,31 +1410,7 @@ app.delete('/api/customers/:id', async (req, res) => {
 
 // ... existing code ...
 
-// GET /api/sales
-app.get('/api/sales', async (req, res) => {
-    const branch = req.query.branch || 'Main Branch';
-    const shopownerId = req.query.shopownerId;
 
-    try {
-        const pool = await sql.connect();
-        let query = 'SELECT * FROM sales WHERE branch = @branch';
-
-        if (shopownerId) {
-            query += ' AND shopowner_id = @shopownerId';
-        }
-
-        query += ' ORDER BY sale_date DESC';
-
-        const request = pool.request().input('branch', sql.NVarChar, branch);
-        if (shopownerId) request.input('shopownerId', sql.NVarChar, shopownerId);
-
-        const result = await request.query(query);
-        res.json(result.recordset);
-    } catch (err) {
-        console.error("Error fetching sales:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-});
 
 // GET /api/sales/:id
 app.get('/api/sales/:id', async (req, res) => {
@@ -1343,6 +1490,9 @@ app.post('/api/payment/init', async (req, res) => {
     }
 
     try {
+        console.log("Initiating Payment...");
+        console.log("Store ID:", process.env.STORE_ID);
+
         const total_amount = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
         const tax_amount = total_amount * 0.05;
         const final_amount = total_amount + tax_amount;
@@ -1394,6 +1544,7 @@ app.post('/api/payment/init', async (req, res) => {
             `);
 
         const sale_id = saleInsert.recordset[0].id;
+        console.log("Sale Created, ID:", sale_id);
 
         // Insert Sale Items
         for (const item of cart) {
@@ -1421,13 +1572,15 @@ app.post('/api/payment/init', async (req, res) => {
 
         // Init SSLCommerz for Online Payment
         const apiBaseUrl = getApiBaseUrl(req);
+        const clientUrl = getClientUrl(req);
+        const redirectParam = encodeURIComponent(clientUrl);
         const data = {
             total_amount: final_amount,
             currency: 'BDT',
             tran_id: tran_id,
-            success_url: `${apiBaseUrl}/api/payment/success/${tran_id}`,
-            fail_url: `${apiBaseUrl}/api/payment/fail/${tran_id}`,
-            cancel_url: `${apiBaseUrl}/api/payment/cancel/${tran_id}`,
+            success_url: `${apiBaseUrl}/api/payment/success/${tran_id}?redirect=${redirectParam}`,
+            fail_url: `${apiBaseUrl}/api/payment/fail/${tran_id}?redirect=${redirectParam}`,
+            cancel_url: `${apiBaseUrl}/api/payment/cancel/${tran_id}?redirect=${redirectParam}`,
             ipn_url: `${apiBaseUrl}/api/payment/ipn`,
             shipping_method: 'Courier',
             product_name: 'Jewelry Items',
@@ -1451,8 +1604,11 @@ app.post('/api/payment/init', async (req, res) => {
             ship_country: 'Bangladesh',
         };
 
+        console.log("Initializing SSLCommerz with data:", data);
+
         const sslcz = new SSLCommerzPayment(process.env.STORE_ID, process.env.STORE_PASSWORD, process.env.IS_LIVE === 'true');
         sslcz.init(data).then(apiResponse => {
+            console.log("SSLCommerz Response:", apiResponse);
             let GatewayPageURL = apiResponse.GatewayPageURL;
             if (GatewayPageURL) {
                 res.send({ url: GatewayPageURL });
@@ -1469,9 +1625,12 @@ app.post('/api/payment/init', async (req, res) => {
 });
 
 // Payment Success
-app.post('/api/payment/success/:tran_id', async (req, res) => {
-    const { tran_id } = req.params;
-    const clientUrl = getClientUrl(req);
+const handlePaymentSuccess = async (req, res) => {
+    const tran_id = getTranId(req);
+    if (!tran_id) {
+        return res.redirect(buildRedirectUrl(req, '/shopowner/sales?status=error'));
+    }
+
     try {
         const pool = await sql.connect();
 
@@ -1488,7 +1647,6 @@ app.post('/api/payment/success/:tran_id', async (req, res) => {
         if (saleUpdate.recordset.length > 0) {
             const sale = saleUpdate.recordset[0];
 
-            // 2. Check if this is a subscription payment
             // 2. Check if this is a subscription payment
             if (sale.branch === 'Subscription') {
                 try {
@@ -1531,7 +1689,7 @@ app.post('/api/payment/success/:tran_id', async (req, res) => {
                 } catch (subErr) {
                     console.error("Subscription activation error:", subErr);
                 }
-                return res.redirect(`${clientUrl}/shopowner/profile?status=success`);
+                return res.redirect(buildRedirectUrl(req, '/shopowner/profile?status=success'));
             }
 
             const saleItems = await pool.request()
@@ -1540,12 +1698,15 @@ app.post('/api/payment/success/:tran_id', async (req, res) => {
             await applyStockDeduction(pool, saleItems.recordset);
         }
 
-        res.redirect(`${clientUrl}/shopowner/sales?status=success`);
+        res.redirect(buildRedirectUrl(req, '/shopowner/sales?status=success'));
     } catch (err) {
         console.error("Payment success error:", err);
-        res.redirect(`${clientUrl}/shopowner/sales?status=error`);
+        res.redirect(buildRedirectUrl(req, '/shopowner/sales?status=error'));
     }
-});
+};
+
+app.post('/api/payment/success/:tran_id', handlePaymentSuccess);
+app.get('/api/payment/success/:tran_id', handlePaymentSuccess);
 
 // Manufacturing Routes
 
@@ -1795,7 +1956,7 @@ app.get('/api/user-profile', async (req, res) => {
 
 // PUT /api/user-profile
 app.put('/api/user-profile', async (req, res) => {
-    const { id, full_name, phone, identifier } = req.body;
+    const { id, full_name, phone, identifier, shop_name, shop_logo_url } = req.body;
     try {
         const pool = await sql.connect();
         await pool.request()
@@ -1803,9 +1964,11 @@ app.put('/api/user-profile', async (req, res) => {
             .input('full_name', sql.NVarChar, full_name)
             .input('phone', sql.NVarChar, phone)
             .input('identifier', sql.NVarChar, identifier)
+            .input('shop_name', sql.NVarChar, shop_name)
+            .input('shop_logo_url', sql.NVarChar, shop_logo_url || null)
             .query(`
                 UPDATE shopowners 
-                SET full_name = @full_name, phone = @phone, identifier = @identifier
+                SET full_name = @full_name, phone = @phone, identifier = @identifier, shop_name = @shop_name, shop_logo_url = @shop_logo_url
                 WHERE id = @id
             `);
         res.json({ message: "Profile updated successfully" });
@@ -1958,21 +2121,29 @@ app.delete('/api/manufacturing/:id', async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
-app.post('/api/payment/fail/:tran_id', async (req, res) => {
-    const { tran_id } = req.params;
-    const clientUrl = getClientUrl(req);
+const handlePaymentFail = async (req, res) => {
+    const tran_id = getTranId(req);
+    if (!tran_id) {
+        return res.redirect(buildRedirectUrl(req, '/shopowner/sales?status=error'));
+    }
+
     try {
         const pool = await sql.connect();
         await pool.request()
             .input('transaction_id', sql.NVarChar, tran_id)
             .query("UPDATE sales SET status = 'Failed' WHERE transaction_id = @transaction_id");
 
-        res.redirect(`${clientUrl}/shopowner/sales?status=failed`);
+        res.redirect(buildRedirectUrl(req, '/shopowner/sales?status=failed'));
     } catch (err) {
         console.error("Payment fail error:", err);
-        res.redirect(`${clientUrl}/shopowner/sales?status=error`);
+        res.redirect(buildRedirectUrl(req, '/shopowner/sales?status=error'));
     }
-});
+};
+
+app.post('/api/payment/fail/:tran_id', handlePaymentFail);
+app.get('/api/payment/fail/:tran_id', handlePaymentFail);
+app.post('/api/payment/cancel/:tran_id', handlePaymentFail);
+app.get('/api/payment/cancel/:tran_id', handlePaymentFail);
 
 // GET /api/health
 app.get('/api/health', async (req, res) => {
@@ -1987,72 +2158,7 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
-// Repairs Routes
 
-
-
-// PUT /api/repairs/:id
-app.put('/api/repairs/:id', async (req, res) => {
-    const { id } = req.params;
-    const { status, estimated_cost, delivery_date } = req.body;
-
-    try {
-        const pool = await sql.connect();
-        let query = 'UPDATE repair_tickets SET ';
-        const updates = [];
-
-        if (status) updates.push("status = @status");
-        if (estimated_cost) updates.push("estimated_cost = @estimated_cost");
-        if (delivery_date) updates.push("delivery_date = @delivery_date");
-
-        if (updates.length === 0) return res.status(400).json({ error: "No fields to update" });
-
-        query += updates.join(", ");
-        query += " OUTPUT INSERTED.* WHERE id = @id";
-
-        const request = pool.request().input('id', sql.Int, id);
-
-        if (status) request.input('status', sql.NVarChar, status);
-        if (estimated_cost) request.input('estimated_cost', sql.Decimal(18, 2), estimated_cost);
-        if (delivery_date) request.input('delivery_date', sql.DateTime, delivery_date);
-
-        const result = await request.query(query);
-
-        if (result.recordset.length === 0) {
-            return res.status(404).json({ error: "Ticket not found" });
-        }
-
-        res.json(result.recordset[0]);
-    } catch (err) {
-        console.error("Error updating repair ticket:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-});
-
-// DELETE /api/repairs/:id
-app.delete('/api/repairs/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        const pool = await sql.connect();
-        const result = await pool.request()
-            .input('id', sql.Int, id)
-            .query('DELETE FROM repair_tickets WHERE id = @id');
-
-        if (result.rowsAffected[0] === 0) {
-            return res.status(404).json({ error: "Ticket not found" });
-        }
-
-        res.json({ message: "Ticket deleted successfully" });
-    } catch (err) {
-        console.error("Error deleting repair ticket:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-});
-
-
-app.get('/api/ping', (req, res) => {
-    res.json({ message: 'pong', timestamp: new Date().toISOString() });
-});
 
 
 // ==========================================
@@ -2163,4 +2269,3 @@ app.get('/api/gl/shops/:slug/products', async (req, res) => {
 });
 
 module.exports = app;
-

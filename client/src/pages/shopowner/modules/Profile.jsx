@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { User, MapPin, Plus, Store, Building2, Phone, Mail, X, Shield, Lock, CheckCircle, CreditCard, Calendar } from 'lucide-react';
+import { User, MapPin, Plus, Store, Building2, Phone, Mail, X, Shield, Lock, CheckCircle, CreditCard, Calendar, Camera, Upload } from 'lucide-react';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../../firebase';
 
 const Profile = () => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [isChangingPassword, setIsChangingPassword] = useState(false);
-    const [editForm, setEditForm] = useState({ full_name: '', phone: '', identifier: '' });
+    const [editForm, setEditForm] = useState({ full_name: '', phone: '', identifier: '', shop_name: '', shop_logo_url: '' });
+    const [uploadingImage, setUploadingImage] = useState(false);
     const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
     const [passwordError, setPasswordError] = useState('');
     const [message, setMessage] = useState('');
@@ -130,6 +133,33 @@ const Profile = () => {
         }
     };
 
+    const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploadingImage(true);
+        const storageRef = ref(storage, `shop_logos/${user.id}_${Date.now()}_${file.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+
+        uploadTask.on(
+            "state_changed",
+            (snapshot) => {
+                // Monitor progress if needed
+            },
+            (error) => {
+                console.error("Image upload failed:", error);
+                setUploadingImage(false);
+                alert("Failed to upload image.");
+            },
+            () => {
+                getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                    setEditForm(prev => ({ ...prev, shop_logo_url: downloadURL }));
+                    setUploadingImage(false);
+                });
+            }
+        );
+    };
+
     const handleUpdateProfile = async (e) => {
         e.preventDefault();
         try {
@@ -139,6 +169,7 @@ const Profile = () => {
                 body: JSON.stringify(editForm)
             });
             if (res.ok) {
+                // Determine if we should update local storage (optional, mostly for consistency)
                 setUser(editForm);
                 setIsEditing(false);
                 setMessage('Profile updated successfully!');
@@ -211,10 +242,15 @@ const Profile = () => {
 
                         <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-8">
                             <div className="flex flex-col items-center">
-                                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-primary-gold/20 to-primary-gold/5 border-2 border-primary-gold/30 flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(255,215,0,0.1)]">
-                                    <User size={50} className="text-primary-gold" />
+                                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-primary-gold/20 to-primary-gold/5 border-2 border-primary-gold/30 flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(255,215,0,0.1)] overflow-hidden relative group">
+                                    {user.shop_logo_url ? (
+                                        <img src={user.shop_logo_url} alt="Shop Logo" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <User size={50} className="text-primary-gold" />
+                                    )}
                                 </div>
-                                <span className="px-3 py-1 bg-primary-gold/10 text-primary-gold text-xs font-bold rounded-full border border-primary-gold/20">
+                                <span className="px-3 py-1 bg-primary-gold/10 text-primary-gold text-xs font-bold rounded-full border border-primary-gold/20 flex items-center gap-1">
+                                    <Store size={12} />
                                     Shop Owner
                                 </span>
                             </div>
@@ -247,6 +283,13 @@ const Profile = () => {
                                             <span className="text-xs text-gray-500 uppercase font-bold">Phone Number</span>
                                         </div>
                                         <p className="text-white font-medium pl-8">{user.phone}</p>
+                                    </div>
+                                    <div className="p-4 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-colors md:col-span-2">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <Store size={18} className="text-primary-gold/70" />
+                                            <span className="text-xs text-gray-500 uppercase font-bold">Shop Name</span>
+                                        </div>
+                                        <p className="text-white font-medium pl-8 text-lg">{user.shop_name || 'Not Set'}</p>
                                     </div>
                                 </div>
                             </div>
@@ -377,6 +420,35 @@ const Profile = () => {
                                     className="modal-input"
                                     required
                                 />
+                            </div>
+                            <div>
+                                <label className="modal-label">Shop Name</label>
+                                <input
+                                    type="text"
+                                    value={editForm.shop_name || ''}
+                                    onChange={e => setEditForm({ ...editForm, shop_name: e.target.value })}
+                                    className="modal-input"
+                                    placeholder="Enter your shop name"
+                                />
+                            </div>
+                            <div>
+                                <label className="modal-label">Shop Logo</label>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-16 h-16 rounded-full bg-gray-800 border border-gray-700 overflow-hidden flex items-center justify-center">
+                                        {editForm.shop_logo_url ? (
+                                            <img src={editForm.shop_logo_url} alt="Preview" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <Store className="text-gray-500" />
+                                        )}
+                                    </div>
+                                    <label className="flex items-center gap-2 px-4 py-2 bg-[#121418] border border-gray-700 hover:border-primary-gold/50 rounded-xl cursor-pointer transition-colors group">
+                                        <Upload size={16} className="text-gray-400 group-hover:text-primary-gold" />
+                                        <span className="text-sm font-medium text-gray-300 group-hover:text-white">
+                                            {uploadingImage ? 'Uploading...' : 'Upload Logo'}
+                                        </span>
+                                        <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={uploadingImage} />
+                                    </label>
+                                </div>
                             </div>
                             <div className="modal-footer">
                                 <button type="button" onClick={() => setIsEditing(false)} className="modal-btn-cancel">Cancel</button>

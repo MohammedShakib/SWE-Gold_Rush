@@ -171,12 +171,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { name: 'Admin Control', path: '/shopowner/admin', icon: AdminIcon },
         { name: 'AI Price Prediction', path: '/shopowner/ai-prediction', icon: AIIcon },
         { name: 'Profile', path: '/shopowner/profile', icon: User },
-    ].filter(item => {
-        if (item.name === 'Admin Control') {
-            return activeBranch === 'Main Branch';
-        }
-        return true;
-    });
+    ];
 
     return (
         <>

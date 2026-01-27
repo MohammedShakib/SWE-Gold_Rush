@@ -10,8 +10,44 @@ const PORT = 5000;
 app.use(cors());
 app.use(express.json());
 
-const getApiBaseUrl = (req) => process.env.API_BASE_URL || `${req.protocol}://${req.get('host')}`;
-const getClientUrl = (req) => process.env.CLIENT_URL || req.get('origin') || `${req.protocol}://${req.get('host')}`;
+const normalizeUrlValue = (value) => {
+    if (!value) return null;
+    const text = String(value).trim();
+    if (!text || text === 'null' || text === 'undefined') return null;
+    return text.replace(/\/+$/, '');
+};
+
+const normalizeTranId = (value) => {
+    if (!value) return null;
+    const text = String(value).trim();
+    if (!text || text === 'null' || text === 'undefined') return null;
+    return text;
+};
+
+const getApiBaseUrl = (req) => normalizeUrlValue(process.env.API_BASE_URL) || `${req.protocol}://${req.get('host')}`;
+const getClientUrl = (req) =>
+    normalizeUrlValue(process.env.CLIENT_URL) ||
+    normalizeUrlValue(req.get('origin')) ||
+    normalizeUrlValue(req.get('referer')) ||
+    `${req.protocol}://${req.get('host')}`;
+
+const getRedirectBase = (req) =>
+    normalizeUrlValue(process.env.CLIENT_URL) ||
+    normalizeUrlValue(req.query?.redirect) ||
+    normalizeUrlValue(req.get('origin')) ||
+    normalizeUrlValue(req.get('referer')) ||
+    `${req.protocol}://${req.get('host')}`;
+
+const buildRedirectUrl = (req, path) => {
+    const base = getRedirectBase(req);
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    return `${base}${normalizedPath}`;
+};
+
+const getTranId = (req) =>
+    normalizeTranId(req.params?.tran_id) ||
+    normalizeTranId(req.body?.tran_id) ||
+    normalizeTranId(req.query?.tran_id);
 
 const applyStockDeduction = async (pool, items) => {
     for (const item of items) {
@@ -621,13 +657,15 @@ app.post('/api/auth/signup', async (req, res) => {
             try {
                 const tran_id = `SUB-${uuidv4()}`;
                 const apiBaseUrl = getApiBaseUrl(req);
+                const clientUrl = getClientUrl(req);
+                const redirectParam = encodeURIComponent(clientUrl);
                 const paymentData = {
                     total_amount: planAmount,
                     currency: 'BDT',
                     tran_id: tran_id,
-                    success_url: `${apiBaseUrl}/api/payment/success/${tran_id}`,
-                    fail_url: `${apiBaseUrl}/api/payment/fail/${tran_id}`,
-                    cancel_url: `${apiBaseUrl}/api/payment/cancel/${tran_id}`,
+                    success_url: `${apiBaseUrl}/api/payment/success/${tran_id}?redirect=${redirectParam}`,
+                    fail_url: `${apiBaseUrl}/api/payment/fail/${tran_id}?redirect=${redirectParam}`,
+                    cancel_url: `${apiBaseUrl}/api/payment/cancel/${tran_id}?redirect=${redirectParam}`,
                     ipn_url: `${apiBaseUrl}/api/payment/ipn`,
                     shipping_method: 'Courier',
                     product_name: `${selectedPlan} Subscription`,
@@ -651,6 +689,15 @@ app.post('/api/auth/signup', async (req, res) => {
                     ship_postcode: 1000,
                     ship_country: 'Bangladesh',
                 };
+
+                await pool.request()
+                    .input('planAmount', sql.Decimal(18, 2), planAmount)
+                    .input('tran_id', sql.NVarChar, tran_id)
+                    .input('shopownerId', sql.NVarChar, shopownerId)
+                    .query(`
+                        INSERT INTO sales (total_amount, tax_amount, final_amount, payment_method, transaction_id, status, branch, shopowner_id)
+                        VALUES (@planAmount, 0, @planAmount, 'Online', @tran_id, 'Pending', 'Subscription', @shopownerId)
+                    `);
 
                 const sslcz = new SSLCommerzPayment(process.env.STORE_ID || 'testbox', process.env.STORE_PASSWORD || 'qwerty', false);
                 const apiResponse = await sslcz.init(paymentData);
@@ -738,7 +785,7 @@ app.post('/api/auth/signin', async (req, res) => {
 app.get('/api/admin/users', async (req, res) => {
     try {
         const pool = await sql.connect();
-        const result = await pool.request().query("SELECT * FROM shopowners WHERE subscription_status != 'deleted' ORDER BY id DESC");
+        const result = await pool.request().query("SELECT * FROM shopowners ORDER BY id DESC");
         res.json(result.recordset);
     } catch (err) {
         console.error("Error fetching users:", err);
@@ -773,23 +820,117 @@ app.put('/api/admin/users/:id', async (req, res) => {
     }
 });
 
-// Super Admin: Delete User (Soft Delete)
+// Super Admin: Delete User (HARD DELETE - Cleans up all related data)
 app.delete('/api/admin/users/:id', async (req, res) => {
     const { id } = req.params;
     try {
         const pool = await sql.connect();
-        const result = await pool.request()
-            .input('id', sql.Int, id)
-            .query("UPDATE shopowners SET subscription_status = 'deleted' WHERE id = @id");
 
-        if (result.rowsAffected[0] === 0) {
+        // 1. Get Shop Owner details
+        const userRes = await pool.request()
+            .input('id', sql.Int, id)
+            .query("SELECT id, shopowner_id FROM shopowners WHERE id = @id");
+
+        if (userRes.recordset.length === 0) {
             return res.status(404).json({ error: "User not found" });
         }
 
-        res.json({ message: "User deleted successfully" });
+        const user = userRes.recordset[0];
+        const shopownerId = user.shopowner_id;
+        const userId = user.id; // Int ID
+
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        try {
+            const request = new sql.Request(transaction);
+            request.input('id', sql.Int, userId);
+            if (shopownerId) request.input('sid', sql.NVarChar, shopownerId);
+
+            console.log(`Deleting user ${userId} (${shopownerId})...`);
+
+            if (shopownerId) {
+                // --- Level 3: Grandchildren (Delete items linked to sales/orders) ---
+                // Delete Sale Items - KEY FIX: Check both IDs to catch legacy data
+                await request.query(`
+                    DELETE FROM sale_items 
+                    WHERE sale_id IN (
+                        SELECT id FROM sales 
+                        WHERE shopowner_id = @sid OR user_id = @id
+                    )
+                `);
+
+                // Delete Installment Payments
+                await request.query(`
+                    DELETE FROM installment_payments 
+                    WHERE installment_id IN (
+                        SELECT id FROM installments 
+                        WHERE shopowner_id = @sid OR user_id = @id
+                    )
+                `);
+
+                // Delete Repair Orders (linked to Customers)
+                await request.query(`
+                    DELETE FROM repair_orders 
+                    WHERE customer_id IN (SELECT id FROM customers WHERE shopowner_id = @sid)
+                `);
+
+                // --- Level 2: Children (Transactional Data) ---
+                // Delete Sales for BOTH keys
+                await request.query("DELETE FROM sales WHERE shopowner_id = @sid OR user_id = @id");
+
+                // Delete Installments for BOTH keys
+                await request.query("DELETE FROM installments WHERE shopowner_id = @sid OR user_id = @id");
+
+                await request.query("DELETE FROM repair_tickets WHERE shopowner_id = @sid");
+                await request.query("DELETE FROM manufacturing_orders WHERE shopowner_id = @sid");
+                await request.query("DELETE FROM stock_transfers WHERE shopowner_id = @sid");
+
+                // --- Level 2.5: Product Dependents ---
+                await request.query(`
+                    DELETE FROM GL_Cart 
+                    WHERE product_id IN (SELECT id FROM products WHERE shopowner_id = @sid)
+                `);
+                await request.query(`
+                    DELETE FROM GL_Reviews 
+                    WHERE product_id IN (SELECT id FROM products WHERE shopowner_id = @sid)
+                `);
+
+
+                // --- Level 2: Catalog Data ---
+                await request.query("DELETE FROM products WHERE shopowner_id = @sid");
+                await request.query("DELETE FROM customers WHERE shopowner_id = @sid");
+                await request.query("DELETE FROM branches WHERE shopowner_id = @sid");
+            }
+
+            // --- Level 1: integer ID based links ---
+            // GL_Orders uses shopowner_id as INT
+            await request.query(`
+                DELETE FROM GL_OrderItems 
+                WHERE order_id IN (SELECT id FROM GL_Orders WHERE shopowner_id = @id)
+            `);
+            await request.query("DELETE FROM GL_Orders WHERE shopowner_id = @id");
+            await request.query("DELETE FROM GL_ShopProfiles WHERE shopowner_id = @id");
+
+            // Clean up any orphans by user_id if they exist
+            await request.query("DELETE FROM products WHERE user_id = @id");
+            await request.query("DELETE FROM branches WHERE user_id = @id");
+
+            // --- Final: Delete User ---
+            await request.query("DELETE FROM shopowners WHERE id = @id");
+
+            await transaction.commit();
+            console.log("Delete successful.");
+            res.json({ message: "User and all related data permanently deleted." });
+        } catch (err) {
+            console.error("Transaction failed, rolling back.", err);
+            await transaction.rollback();
+            throw err;
+        }
+
     } catch (err) {
         console.error("Error deleting user:", err);
-        res.status(500).json({ error: "Internal Server Error" });
+        res.status(500).json({ error: "Internal Server Error: " + err.message });
     }
 });
 
@@ -865,13 +1006,15 @@ app.post('/api/subscription/update', async (req, res) => {
             try {
                 const tran_id = `SUB-${uuidv4()}`;
                 const apiBaseUrl = getApiBaseUrl(req);
+                const clientUrl = getClientUrl(req);
+                const redirectParam = encodeURIComponent(clientUrl);
                 const paymentData = {
                     total_amount: planAmount,
                     currency: 'BDT',
                     tran_id: tran_id,
-                    success_url: `${apiBaseUrl}/api/payment/success/${tran_id}`,
-                    fail_url: `${apiBaseUrl}/api/payment/fail/${tran_id}`,
-                    cancel_url: `${apiBaseUrl}/api/payment/cancel/${tran_id}`,
+                    success_url: `${apiBaseUrl}/api/payment/success/${tran_id}?redirect=${redirectParam}`,
+                    fail_url: `${apiBaseUrl}/api/payment/fail/${tran_id}?redirect=${redirectParam}`,
+                    cancel_url: `${apiBaseUrl}/api/payment/cancel/${tran_id}?redirect=${redirectParam}`,
                     ipn_url: `${apiBaseUrl}/api/payment/ipn`,
                     shipping_method: 'Courier',
                     product_name: `${plan} Subscription`,
@@ -1429,13 +1572,15 @@ app.post('/api/payment/init', async (req, res) => {
 
         // Init SSLCommerz for Online Payment
         const apiBaseUrl = getApiBaseUrl(req);
+        const clientUrl = getClientUrl(req);
+        const redirectParam = encodeURIComponent(clientUrl);
         const data = {
             total_amount: final_amount,
             currency: 'BDT',
             tran_id: tran_id,
-            success_url: `${apiBaseUrl}/api/payment/success/${tran_id}`,
-            fail_url: `${apiBaseUrl}/api/payment/fail/${tran_id}`,
-            cancel_url: `${apiBaseUrl}/api/payment/cancel/${tran_id}`,
+            success_url: `${apiBaseUrl}/api/payment/success/${tran_id}?redirect=${redirectParam}`,
+            fail_url: `${apiBaseUrl}/api/payment/fail/${tran_id}?redirect=${redirectParam}`,
+            cancel_url: `${apiBaseUrl}/api/payment/cancel/${tran_id}?redirect=${redirectParam}`,
             ipn_url: `${apiBaseUrl}/api/payment/ipn`,
             shipping_method: 'Courier',
             product_name: 'Jewelry Items',
@@ -1480,9 +1625,12 @@ app.post('/api/payment/init', async (req, res) => {
 });
 
 // Payment Success
-app.post('/api/payment/success/:tran_id', async (req, res) => {
-    const { tran_id } = req.params;
-    const clientUrl = getClientUrl(req);
+const handlePaymentSuccess = async (req, res) => {
+    const tran_id = getTranId(req);
+    if (!tran_id) {
+        return res.redirect(buildRedirectUrl(req, '/shopowner/sales?status=error'));
+    }
+
     try {
         const pool = await sql.connect();
 
@@ -1499,7 +1647,6 @@ app.post('/api/payment/success/:tran_id', async (req, res) => {
         if (saleUpdate.recordset.length > 0) {
             const sale = saleUpdate.recordset[0];
 
-            // 2. Check if this is a subscription payment
             // 2. Check if this is a subscription payment
             if (sale.branch === 'Subscription') {
                 try {
@@ -1542,7 +1689,7 @@ app.post('/api/payment/success/:tran_id', async (req, res) => {
                 } catch (subErr) {
                     console.error("Subscription activation error:", subErr);
                 }
-                return res.redirect(`${clientUrl}/shopowner/profile?status=success`);
+                return res.redirect(buildRedirectUrl(req, '/shopowner/profile?status=success'));
             }
 
             const saleItems = await pool.request()
@@ -1551,12 +1698,15 @@ app.post('/api/payment/success/:tran_id', async (req, res) => {
             await applyStockDeduction(pool, saleItems.recordset);
         }
 
-        res.redirect(`${clientUrl}/shopowner/sales?status=success`);
+        res.redirect(buildRedirectUrl(req, '/shopowner/sales?status=success'));
     } catch (err) {
         console.error("Payment success error:", err);
-        res.redirect(`${clientUrl}/shopowner/sales?status=error`);
+        res.redirect(buildRedirectUrl(req, '/shopowner/sales?status=error'));
     }
-});
+};
+
+app.post('/api/payment/success/:tran_id', handlePaymentSuccess);
+app.get('/api/payment/success/:tran_id', handlePaymentSuccess);
 
 // Manufacturing Routes
 
@@ -1806,7 +1956,7 @@ app.get('/api/user-profile', async (req, res) => {
 
 // PUT /api/user-profile
 app.put('/api/user-profile', async (req, res) => {
-    const { id, full_name, phone, identifier } = req.body;
+    const { id, full_name, phone, identifier, shop_name, shop_logo_url } = req.body;
     try {
         const pool = await sql.connect();
         await pool.request()
@@ -1814,9 +1964,11 @@ app.put('/api/user-profile', async (req, res) => {
             .input('full_name', sql.NVarChar, full_name)
             .input('phone', sql.NVarChar, phone)
             .input('identifier', sql.NVarChar, identifier)
+            .input('shop_name', sql.NVarChar, shop_name)
+            .input('shop_logo_url', sql.NVarChar, shop_logo_url || null)
             .query(`
                 UPDATE shopowners 
-                SET full_name = @full_name, phone = @phone, identifier = @identifier
+                SET full_name = @full_name, phone = @phone, identifier = @identifier, shop_name = @shop_name, shop_logo_url = @shop_logo_url
                 WHERE id = @id
             `);
         res.json({ message: "Profile updated successfully" });
@@ -1969,21 +2121,29 @@ app.delete('/api/manufacturing/:id', async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
-app.post('/api/payment/fail/:tran_id', async (req, res) => {
-    const { tran_id } = req.params;
-    const clientUrl = getClientUrl(req);
+const handlePaymentFail = async (req, res) => {
+    const tran_id = getTranId(req);
+    if (!tran_id) {
+        return res.redirect(buildRedirectUrl(req, '/shopowner/sales?status=error'));
+    }
+
     try {
         const pool = await sql.connect();
         await pool.request()
             .input('transaction_id', sql.NVarChar, tran_id)
             .query("UPDATE sales SET status = 'Failed' WHERE transaction_id = @transaction_id");
 
-        res.redirect(`${clientUrl}/shopowner/sales?status=failed`);
+        res.redirect(buildRedirectUrl(req, '/shopowner/sales?status=failed'));
     } catch (err) {
         console.error("Payment fail error:", err);
-        res.redirect(`${clientUrl}/shopowner/sales?status=error`);
+        res.redirect(buildRedirectUrl(req, '/shopowner/sales?status=error'));
     }
-});
+};
+
+app.post('/api/payment/fail/:tran_id', handlePaymentFail);
+app.get('/api/payment/fail/:tran_id', handlePaymentFail);
+app.post('/api/payment/cancel/:tran_id', handlePaymentFail);
+app.get('/api/payment/cancel/:tran_id', handlePaymentFail);
 
 // GET /api/health
 app.get('/api/health', async (req, res) => {

@@ -15,6 +15,7 @@ const SuperAdminDashboard = () => {
     });
 
     const [deleteConfirmation, setDeleteConfirmation] = useState(null);
+    const [deleting, setDeleting] = useState(false);
 
     const [notification, setNotification] = useState(null); // { type: 'success' | 'error', message: '' }
 
@@ -79,6 +80,7 @@ const SuperAdminDashboard = () => {
     const confirmDelete = async () => {
         if (!deleteConfirmation) return;
 
+        setDeleting(true);
         try {
             const response = await fetch(`/api/admin/users/${deleteConfirmation.id}`, {
                 method: 'DELETE'
@@ -90,12 +92,14 @@ const SuperAdminDashboard = () => {
                 showNotification('success', "User deleted successfully");
             } else {
                 showNotification('error', "Failed to delete user");
-                setDeleteConfirmation(null); // Close modal on error too
+                setDeleteConfirmation(null);
             }
         } catch (error) {
             console.error("Error deleting user:", error);
             showNotification('error', "Error deleting user");
             setDeleteConfirmation(null);
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -262,9 +266,17 @@ const SuperAdminDashboard = () => {
                             </button>
                             <button
                                 onClick={confirmDelete}
-                                className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-all shadow-lg shadow-red-500/20"
+                                disabled={deleting}
+                                className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-all shadow-lg shadow-red-500/20 flex items-center justify-center gap-2"
                             >
-                                Delete
+                                {deleting ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                        Deleting...
+                                    </>
+                                ) : (
+                                    'Delete'
+                                )}
                             </button>
                         </div>
                     </div>

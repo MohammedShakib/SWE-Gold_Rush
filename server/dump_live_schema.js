@@ -46,7 +46,9 @@ async function dumpSchema() {
             });
         });
 
-        console.log("Tables in DB:", JSON.stringify(Object.keys(tables), null, 2));
+        if (tables['shopowners']) {
+            console.log("Columns in shopowners:", JSON.stringify(tables['shopowners'], null, 2));
+        }
         // process.exit(0);
     } catch (err) {
         console.error("Error:", err);
