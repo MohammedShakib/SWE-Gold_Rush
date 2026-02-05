@@ -25,6 +25,12 @@ authTranslations.BN = authTranslations.EN;
 const SignIn = () => {
     const { language } = useLanguage();
     const t = authTranslations[language] || authTranslations.EN;
+    const adminConfig = {
+        user: import.meta.env.VITE_ADMIN_USER,
+        password: import.meta.env.VITE_ADMIN_PASSWORD,
+        userId: import.meta.env.VITE_ADMIN_USER_ID,
+        shopownerId: import.meta.env.VITE_ADMIN_SHOPOWNER_ID
+    };
 
     const [formError, setFormError] = useState('');
     const [formData, setFormData] = useState({
@@ -43,10 +49,17 @@ const SignIn = () => {
         e.preventDefault();
         setFormError('');
 
-        if (formData.identifier === 'admin' && formData.password === 'admin') {
+        if (
+            adminConfig.user
+            && adminConfig.password
+            && adminConfig.userId
+            && adminConfig.shopownerId
+            && formData.identifier === adminConfig.user
+            && formData.password === adminConfig.password
+        ) {
             localStorage.setItem('shopowner_auth', 'true');
-            localStorage.setItem('userId', '1');
-            localStorage.setItem('shopownerId', 'SP-001'); // Correctly set admin ID
+            localStorage.setItem('userId', adminConfig.userId);
+            localStorage.setItem('shopownerId', adminConfig.shopownerId);
             navigate('/shopowner/dashboard');
             return;
         }
@@ -68,10 +81,14 @@ const SignIn = () => {
             }
 
             if (response.ok) {
-                localStorage.setItem('shopowner_auth', 'true');
-                localStorage.setItem('userId', result.user.id); // Store actual user ID
-                localStorage.setItem('shopownerId', result.user.shopowner_id); // Store Shop Owner ID
-                navigate('/shopowner/dashboard');
+                if (result.user.role === 'superadmin') {
+                    navigate('/superadmin');
+                } else {
+                    localStorage.setItem('shopowner_auth', 'true');
+                    localStorage.setItem('userId', result.user.id);
+                    localStorage.setItem('shopownerId', result.user.shopowner_id);
+                    navigate('/shopowner/dashboard');
+                }
             } else {
                 setFormError(result.error || "Login failed");
             }
@@ -206,10 +223,10 @@ const SignIn = () => {
             </div>
 
             {/* Main Floating Card */}
-            <div className="w-full max-w-[1400px] h-[850px] bg-white rounded-[40px] shadow-[0_0_90px_-10px_rgba(239,182,34,0.4)] flex relative overflow-hidden ring-1 ring-primary-gold/30 mx-auto">
+            <div className="w-full max-w-[1280px] h-[760px] bg-[#F3F4F6] rounded-[40px] shadow-[0_0_90px_-10px_rgba(239,182,34,0.4)] flex relative overflow-hidden ring-1 ring-primary-gold/30 mx-auto">
 
                 {/* Left Side: Form Section */}
-                <div className="w-full lg:w-[45%] p-12 lg:p-16 flex flex-col justify-center relative z-10 bg-white">
+                <div className="w-full lg:w-[45%] p-10 lg:p-14 flex flex-col justify-center relative z-10 bg-[#F3F4F6]">
                     <div className="max-w-md mx-auto w-full space-y-8">
                         {/* Logo */}
                         <div className="mb-4">
@@ -318,7 +335,7 @@ const SignIn = () => {
                     <div className="absolute top-0 bottom-0 left-[-1px] w-24 z-20 pointer-events-none">
                         <svg className="h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M0 0 H100 V100 H0 V0 Z" fill="transparent" />
-                            <path d="M0 0 C40 20 60 40 60 50 C60 60 40 80 0 100 V0 Z" fill="white" />
+                            <path d="M0 0 C40 20 60 40 60 50 C60 60 40 80 0 100 V0 Z" fill="#F3F4F6" />
                         </svg>
                     </div>
 

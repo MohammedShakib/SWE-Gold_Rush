@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { storage } from '../../../firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import CustomAlert from '../../../components/CustomAlert';
 
 const Inventory = () => {
@@ -7,6 +9,9 @@ const Inventory = () => {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
+    const [imageFile, setImageFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
+    const [uploading, setUploading] = useState(false);
 
     // Alert State
     const [alertConfig, setAlertConfig] = useState({
@@ -44,6 +49,7 @@ const Inventory = () => {
 
     // Search State
     const [searchQuery, setSearchQuery] = useState('');
+    const LOW_STOCK_THRESHOLD = 3;
 
     // Filtered Products
     const filteredProducts = products.filter(product => {
@@ -54,6 +60,9 @@ const Inventory = () => {
             (product.category && product.category.toLowerCase().includes(query))
         );
     });
+    const lowStockCount = products.filter((product) => (
+        product.status === 'Low Stock' || Number(product.stock_quantity) < LOW_STOCK_THRESHOLD
+    )).length;
 
     const fetchProducts = async () => {
         try {
@@ -86,6 +95,8 @@ const Inventory = () => {
             stock_quantity: '',
             status: 'In Stock'
         });
+        setImageFile(null);
+        setImagePreview(null);
         setEditingProduct(null);
     };
 
@@ -101,6 +112,7 @@ const Inventory = () => {
                 stock_quantity: product.stock_quantity,
                 status: product.status
             });
+            setImagePreview(product.image_url || null);
         } else {
             resetForm();
         }
@@ -109,8 +121,17 @@ const Inventory = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setUploading(true);
 
         try {
+            let imageUrl = editingProduct?.image_url || null;
+
+            if (imageFile) {
+                const storageRef = ref(storage, `products/${Date.now()}_${imageFile.name}`);
+                const uploadResult = await uploadBytes(storageRef, imageFile);
+                imageUrl = await getDownloadURL(uploadResult.ref);
+            }
+
             const activeBranch = localStorage.getItem('activeBranch') || 'Main Branch';
             const userId = localStorage.getItem('userId');
             let response;
@@ -119,7 +140,7 @@ const Inventory = () => {
                 response = await fetch(`/api/inventory/${editingProduct.id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ...formData, branch: activeBranch, userId })
+                    body: JSON.stringify({ ...formData, image_url: imageUrl, branch: activeBranch, userId })
                 });
             } else {
                 // Create
@@ -127,7 +148,7 @@ const Inventory = () => {
                 response = await fetch('/api/inventory', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ...formData, branch: activeBranch, userId, shopownerId })
+                    body: JSON.stringify({ ...formData, image_url: imageUrl, branch: activeBranch, userId, shopownerId })
                 });
             }
 
@@ -146,6 +167,20 @@ const Inventory = () => {
         } catch (error) {
             console.error("Error saving product:", error);
             showAlert('Error', 'An unexpected error occurred.', 'danger');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setImageFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result);
+            };
+            reader.readAsDataURL(file);
         }
     };
 
@@ -221,6 +256,38 @@ const Inventory = () => {
                                     value={formData.name}
                                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                                 />
+                            </div>
+
+                            {/* Image Upload */}
+                            <div>
+                                <label className="modal-label">Product Image</label>
+                                <div className="flex items-center gap-4">
+                                    <div className="relative w-20 h-20 bg-white/5 rounded-lg overflow-hidden border border-white/10 flex items-center justify-center group">
+                                        {imagePreview ? (
+                                            <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-gray-500">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                                            </svg>
+                                        )}
+                                        <label htmlFor="image-upload" className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-white">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                            </svg>
+                                        </label>
+                                        <input
+                                            id="image-upload"
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={handleImageChange}
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-sm text-gray-400">Upload a product image.</p>
+                                        <p className="text-xs text-gray-500">PNG, JPG up to 5MB</p>
+                                    </div>
+                                </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
@@ -299,8 +366,8 @@ const Inventory = () => {
                             </div>
                             <div className="modal-footer">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="modal-btn-cancel">Cancel</button>
-                                <button type="submit" className="modal-btn-primary">
-                                    {editingProduct ? 'Update Product' : 'Add Product'}
+                                <button type="submit" className="modal-btn-primary" disabled={uploading}>
+                                    {uploading ? 'Processing...' : (editingProduct ? 'Update Product' : 'Add Product')}
                                 </button>
                             </div>
                         </form>
@@ -334,10 +401,9 @@ const Inventory = () => {
                 </div>
                 <div className="bg-[#121418] p-6 rounded-2xl border border-white/5">
                     <p className="text-gray-400 text-sm">Low Stock Alerts</p>
-                    <p className="text-2xl font-bold text-red-400 mt-1">{products.filter(p => p.stock_quantity < 3).length} Items</p>
+                    <p className="text-2xl font-bold text-red-400 mt-1">{lowStockCount} Items</p>
                 </div>
             </div>
-
             <div className="bg-[#121418] rounded-2xl border border-white/5 overflow-hidden">
                 <div className="p-6 border-b border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <h2 className="text-xl font-bold text-white">Product List</h2>
@@ -370,9 +436,18 @@ const Inventory = () => {
                             {filteredProducts.map((product) => (
                                 <tr key={product.id} className="hover:bg-white/5 transition-colors group">
                                     <td className="p-4">
-                                        <div>
-                                            <p className="font-bold text-white">{product.name}</p>
-                                            <p className="text-xs text-gray-500">{product.product_code}</p>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-lg bg-gray-800 border border-gray-700 overflow-hidden flex-shrink-0">
+                                                {product.image_url ? (
+                                                    <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-gray-600 font-bold text-xs">IMG</div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-white">{product.name}</p>
+                                                <p className="text-xs text-gray-500">{product.product_code}</p>
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="p-4">{product.category}</td>
@@ -413,7 +488,7 @@ const Inventory = () => {
                     </table>
                 </div>
             </div>
-        </div >
+        </div>
     );
 };
 

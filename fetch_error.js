@@ -1,6 +1,16 @@
 const https = require('https');
+const http = require('http');
 
-https.get('https://gold-rush-2025.web.app/api/health', (res) => {
+const targetUrl = process.env.API_HEALTH_URL || process.argv[2];
+
+if (!targetUrl) {
+    console.error('Usage: node fetch_error.js <url> (or set API_HEALTH_URL)');
+    process.exit(1);
+}
+
+const client = targetUrl.startsWith('https://') ? https : http;
+
+client.get(targetUrl, (res) => {
     let data = '';
     res.on('data', (chunk) => {
         data += chunk;

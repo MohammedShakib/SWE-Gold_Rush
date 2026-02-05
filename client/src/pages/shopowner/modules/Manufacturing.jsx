@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
     DndContext,
     useSensor,
@@ -6,7 +6,8 @@ import {
     PointerSensor,
     DragOverlay,
     closestCorners,
-    defaultDropAnimationSideEffects
+    defaultDropAnimationSideEffects,
+    useDroppable
 } from '@dnd-kit/core';
 import {
     SortableContext,
@@ -23,6 +24,7 @@ const Manufacturing = () => {
     const [activeId, setActiveId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(true);
+    const dragOriginStatusRef = useRef(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -101,6 +103,8 @@ const Manufacturing = () => {
     };
 
     const handleDragStart = (event) => {
+        const startingOrder = orders.find(o => o.id === event.active.id);
+        dragOriginStatusRef.current = startingOrder ? startingOrder.status : null;
         setActiveId(event.active.id);
     };
 
@@ -123,28 +127,6 @@ const Manufacturing = () => {
 
         // Update the order's status to the new column immediately for visual feedback
         setOrders((prev) => {
-            const activeItems = prev.filter(o => o.status === activeColumn);
-            const overItems = prev.filter(o => o.status === overColumn);
-
-            const activeIndex = activeItems.findIndex(o => o.id === activeId);
-            const overIndex = overItems.findIndex(o => o.id === overId);
-
-            let newIndex;
-            if (overId in columns.map(c => c.id)) {
-                // We're over a container
-                newIndex = overItems.length + 1;
-            } else {
-                const isBelowOverItem =
-                    over &&
-                    active.rect.current.translated &&
-                    active.rect.current.translated.top >
-                    over.rect.top + over.rect.height;
-
-                const modifier = isBelowOverItem ? 1 : 0;
-
-                newIndex = overIndex >= 0 ? overIndex + modifier : overItems.length + 1;
-            }
-
             return prev.map(o => {
                 if (o.id === activeId) {
                     return { ...o, status: overColumn };
@@ -161,9 +143,19 @@ const Manufacturing = () => {
 
         setActiveId(null);
 
-        if (!over) return;
+        const originalStatus = dragOriginStatusRef.current;
+        dragOriginStatusRef.current = null;
 
-        const activeColumn = findColumn(activeId);
+        if (!over) {
+            if (originalStatus) {
+                setOrders((prev) =>
+                    prev.map((o) => (o.id === activeId ? { ...o, status: originalStatus } : o))
+                );
+            }
+            return;
+        }
+
+        const activeColumn = originalStatus || findColumn(activeId);
         const overColumn = findColumn(overId) || (columns.find(c => c.id === overId)?.id);
 
         // If the item dropped in the same column but different position (sorting)
@@ -172,14 +164,14 @@ const Manufacturing = () => {
             const activeIndex = orders.findIndex(o => o.id === activeId);
             const overIndex = orders.findIndex(o => o.id === overId);
 
-            if (activeIndex !== overIndex) {
+            if (overIndex >= 0 && activeIndex !== overIndex) {
                 setOrders((items) => arrayMove(items, activeIndex, overIndex));
             }
 
             // Update Backend with new status (and potentially order index if backend supports it)
             // Check if status changed
             const currentOrder = orders.find(o => o.id === activeId);
-            if (currentOrder && currentOrder.status !== overColumn) {
+            if (currentOrder && activeColumn !== overColumn) {
                 // Final update ensuring status is set correctly
                 const updatedOrders = orders.map(o =>
                     o.id === activeId ? { ...o, status: overColumn } : o
@@ -278,11 +270,15 @@ const Manufacturing = () => {
 };
 
 const DroppableColumn = ({ column, items }) => {
+    const { setNodeRef } = useDroppable({
+        id: column.id,
+    });
+
     // We sort by local index (array order) since we don't have a sort index from DB yet
     const itemIds = useMemo(() => items.map(i => i.id), [items]);
 
     return (
-        <div className="flex-1 bg-[#121418] rounded-2xl border border-white/5 flex flex-col min-w-[300px] h-full">
+        <div ref={setNodeRef} className="flex-1 bg-[#121418] rounded-2xl border border-white/5 flex flex-col min-w-[300px] h-full">
             <div className={`p-4 border-b border-white/5 flex justify-between items-center border-t-4 ${column.color} rounded-t-2xl`}>
                 <h3 className="font-bold text-white">{column.title}</h3>
                 <span className="bg-white/5 text-gray-400 px-2 py-0.5 rounded text-xs">{items.length}</span>
